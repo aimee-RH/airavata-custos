@@ -28,8 +28,9 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
 echo "==> Writing backend .env"
+# Quote DATABASE_DSN: unquoted & breaks zsh/bash `source .env`.
 cat > .env <<'EOF'
-DATABASE_DSN=admin:admin@tcp(localhost:3306)/custos?parseTime=true&charset=utf8mb4&multiStatements=true
+DATABASE_DSN='admin:admin@tcp(localhost:3306)/custos?parseTime=true&charset=utf8mb4&multiStatements=true'
 OIDC_ISSUER_URL=http://localhost:8081/realms/custos
 OIDC_AUDIENCE=custos-api
 CUSTOS_CLUSTER_ID=00000000-0000-0000-0000-000000000001
