@@ -29,6 +29,11 @@ const TABS = [
     label: "Role Management",
     ability: { action: "manage", subject: "Role" } as const,
   },
+  {
+    href: "/admin/users/activity",
+    label: "Activity",
+    ability: { action: "read", subject: "User" } as const,
+  },
 ] as const;
 
 export function UsersNav({ rightSlot }: { rightSlot?: React.ReactNode }) {

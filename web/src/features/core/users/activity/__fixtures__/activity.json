@@ -1,0 +1,61 @@
+{
+  "items": [
+    {
+      "user_id": "u-alice",
+      "name": "Alice Chen",
+      "email": "alice@example.org",
+      "last_login": "2026-07-22T09:15:00Z",
+      "login_count": 87,
+      "consecutive_logins": 5
+    },
+    {
+      "user_id": "u-bob",
+      "name": "Bob Martinez",
+      "email": "bob@example.org",
+      "last_login": "2026-07-20T14:30:00Z",
+      "login_count": 42,
+      "consecutive_logins": 3
+    },
+    {
+      "user_id": "u-carol",
+      "name": "Carol Smith",
+      "email": "carol@example.org",
+      "last_login": "2026-07-10T08:00:00Z",
+      "login_count": 19,
+      "consecutive_logins": 0
+    },
+    {
+      "user_id": "u-dave",
+      "name": "Dave Wilson",
+      "email": "dave@example.org",
+      "last_login": "2026-07-01T11:00:00Z",
+      "login_count": 7,
+      "consecutive_logins": 0
+    },
+    {
+      "user_id": "u-eve",
+      "name": "Eve Johnson",
+      "email": "eve@example.org",
+      "last_login": null,
+      "login_count": 0,
+      "consecutive_logins": 0
+    },
+    {
+      "user_id": "u-frank",
+      "name": "Frank Lee",
+      "email": "frank@example.org",
+      "last_login": "2026-07-23T07:00:00Z",
+      "login_count": 120,
+      "consecutive_logins": 14
+    },
+    {
+      "user_id": "u-grace",
+      "name": "Grace Park",
+      "email": "grace@example.org",
+      "last_login": "2026-07-15T16:45:00Z",
+      "login_count": 31,
+      "consecutive_logins": 0
+    }
+  ],
+  "total": 7
+}
