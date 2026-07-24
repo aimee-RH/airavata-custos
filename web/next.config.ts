@@ -35,6 +35,31 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_PORTAL_BUILD_SHA: detectBuildSha(),
   },
+  // msw uses Node-native http internals via subpath exports such as
+  // "@mswjs/interceptors/ClientRequest". Webpack's bundler cannot resolve
+  // those subpaths with the "browser" export condition, so we tell Next.js
+  // to treat these packages as external (loaded via Node require at runtime
+  // rather than bundled). The regex covers both msw itself and the entire
+  // @mswjs/* scope.
+  serverExternalPackages: ["msw", "@mswjs/interceptors"],
+  webpack(config, { isServer }) {
+    if (isServer) {
+      // Extend any existing externals with a function that externalises the
+      // msw Node-server bundle and all @mswjs/* sub-packages so webpack
+      // never tries to bundle their Node-only internals.
+      const prev = config.externals ?? [];
+      config.externals = [
+        ...(Array.isArray(prev) ? prev : [prev]),
+        ({ request }: { request?: string }, callback: (err?: null, result?: string) => void) => {
+          if (request && /^(msw\/node|@mswjs\/)/.test(request)) {
+            return callback(null, `commonjs ${request}`);
+          }
+          callback();
+        },
+      ];
+    }
+    return config;
+  },
 };
 
 export default nextConfig;

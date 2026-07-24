@@ -16,7 +16,7 @@
 // under the License.
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { getUserActivity } from "../api";
+import { getUserActivity, getUserActivityAnalytics } from "../api";
 
 const fetchMock = vi.fn();
 vi.stubGlobal("fetch", fetchMock as unknown as typeof fetch);
@@ -46,6 +46,22 @@ function validPayload(overrides?: object) {
 }
 
 afterEach(() => fetchMock.mockReset());
+
+describe("getUserActivityAnalytics API", () => {
+  it("requests and validates the selected rolling window", async () => {
+    fetchMock.mockResolvedValueOnce(mockResponse(200, {
+      generated_at: "2026-07-24T00:00:00Z", window_days: 30,
+      total_users: 2, users_ever_logged_in: 1, lifetime_login_count: 3, lifetime_active_days: 2,
+      active_users: 1, window_login_count: 3, window_active_days: 2,
+      monthly_active_users: 1, monthly_login_count: 3, monthly_active_days: 2,
+      average_logins_per_active_day: 1.5,
+      trend: [{ date: "2026-07-24", active_users: 1, login_count: 2 }],
+    }));
+    const result = await getUserActivityAnalytics(30);
+    expect(String(fetchMock.mock.calls[0]?.[0])).toContain("window=30");
+    expect(result.trend[0]?.login_count).toBe(2);
+  });
+});
 
 describe("getUserActivity API", () => {
   it("calls the correct endpoint", async () => {

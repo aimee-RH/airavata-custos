@@ -17,18 +17,12 @@
 
 "use client";
 
-import * as React from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/shared/ui/button";
 import { Input } from "@/shared/ui/input";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/shared/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
+import { ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Flame } from "lucide-react";
+import * as React from "react";
 import { formatLastLogin, sortActivityRows } from "../lib";
 import type { ActivitySortKey, SortDirection, UserActivityRow } from "../schemas";
 
@@ -38,10 +32,11 @@ type Column = {
 };
 
 const COLUMNS: Column[] = [
-  { key: "name",              label: "Name" },
-  { key: "last_login",        label: "Last Login" },
-  { key: "consecutive_logins", label: "Streak" },
-  { key: "login_count",       label: "Total Logins" },
+  { key: "name", label: "Name" },
+  { key: "last_login", label: "Last Login" },
+  { key: "login_count", label: "Total Logins" },
+  { key: "login_day_count", label: "Active Days" },
+  { key: "current_streak", label: "Current Streak" },
 ];
 
 function SortIcon({
@@ -61,40 +56,77 @@ function SortIcon({
   );
 }
 
-export function ActivityTable({ rows, now }: { rows: UserActivityRow[]; now: Date }) {
-  const [sortKey, setSortKey] = React.useState<ActivitySortKey>("last_login");
-  const [sortDir, setSortDir] = React.useState<SortDirection>("desc");
-  const [search, setSearch] = React.useState("");
+export function ActivityTable({
+  rows,
+  now,
+  search: controlledSearch,
+  sortKey: controlledSortKey,
+  sortDir: controlledSortDir,
+  page = 1,
+  pageSize = Math.max(1, rows.length),
+  total = rows.length,
+  onSearchChange,
+  onSortChange,
+  onPageChange = () => undefined,
+  onViewAnalytics,
+}: {
+  rows: UserActivityRow[];
+  now: Date;
+  inactiveDays?: number;
+  search?: string;
+  sortKey?: ActivitySortKey;
+  sortDir?: SortDirection;
+  page?: number;
+  pageSize?: number;
+  total?: number;
+  onSearchChange?: (value: string) => void;
+  onSortChange?: (key: ActivitySortKey, direction: SortDirection) => void;
+  onPageChange?: (page: number) => void;
+  onViewAnalytics?: (user: UserActivityRow) => void;
+}) {
+  const [localSearch, setLocalSearch] = React.useState("");
+  const [localSortKey, setLocalSortKey] = React.useState<ActivitySortKey>("last_login");
+  const [localSortDir, setLocalSortDir] = React.useState<SortDirection>("desc");
+  const search = controlledSearch ?? localSearch;
+  const sortKey = controlledSortKey ?? localSortKey;
+  const sortDir = controlledSortDir ?? localSortDir;
 
   function handleSort(key: ActivitySortKey) {
     if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+      const next = sortDir === "asc" ? "desc" : "asc";
+      if (onSortChange) onSortChange(key, next);
+      else setLocalSortDir(next);
+    } else if (onSortChange) {
+      onSortChange(key, "asc");
     } else {
-      setSortKey(key);
-      setSortDir("asc");
+      setLocalSortKey(key);
+      setLocalSortDir("asc");
     }
   }
 
-  const filtered = React.useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter(
-      (r) =>
-        r.name.toLowerCase().includes(q) || r.email.toLowerCase().includes(q),
-    );
-  }, [rows, search]);
-
-  const sorted = React.useMemo(
-    () => sortActivityRows(filtered, sortKey, sortDir, now),
-    [filtered, sortKey, sortDir, now],
-  );
+  const serverControlled = Boolean(onSearchChange || onSortChange);
+  const displayedRows = React.useMemo(() => {
+    if (serverControlled) return rows;
+    const normalized = search.trim().toLowerCase();
+    const filtered = normalized
+      ? rows.filter(
+          (row) =>
+            row.name.toLowerCase().includes(normalized) ||
+            row.email.toLowerCase().includes(normalized),
+        )
+      : rows;
+    return sortActivityRows(filtered, sortKey, sortDir, now);
+  }, [serverControlled, rows, search, sortKey, sortDir, now]);
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   return (
     <div className="space-y-3">
       <Input
         placeholder="Search by name or email…"
         value={search}
-        onChange={(e) => setSearch(e.target.value)}
+        onChange={(e) =>
+          onSearchChange ? onSearchChange(e.target.value) : setLocalSearch(e.target.value)
+        }
         className="max-w-xs"
         aria-label="Search users"
       />
@@ -112,11 +144,7 @@ export function ActivityTable({ rows, now }: { rows: UserActivityRow[]; now: Dat
                     sortKey === col.key && "text-foreground",
                   )}
                   aria-sort={
-                    sortKey === col.key
-                      ? sortDir === "asc"
-                        ? "ascending"
-                        : "descending"
-                      : "none"
+                    sortKey === col.key ? (sortDir === "asc" ? "ascending" : "descending") : "none"
                   }
                 >
                   <span className="inline-flex items-center">
@@ -125,52 +153,104 @@ export function ActivityTable({ rows, now }: { rows: UserActivityRow[]; now: Dat
                   </span>
                 </TableHead>
               ))}
+              <TableHead>Avg / Active Day</TableHead>
+              {onViewAnalytics ? <TableHead className="text-right">Audit</TableHead> : null}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {sorted.length === 0 ? (
+            {displayedRows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={COLUMNS.length} className="py-10 text-center text-sm text-muted-foreground">
+                <TableCell
+                  colSpan={COLUMNS.length + 1 + (onViewAnalytics ? 1 : 0)}
+                  className="py-10 text-center text-sm text-muted-foreground"
+                >
                   No user activity to display.
                 </TableCell>
               </TableRow>
             ) : (
-              sorted.map((row) => (
-                <TableRow key={row.user_id}>
-                  {/* Name */}
-                  <TableCell>
-                    <p className="font-medium">{row.name}</p>
-                    <p className="text-xs text-muted-foreground">{row.email}</p>
-                  </TableCell>
+              displayedRows.map((row) => {
+                const streak = serverControlled ? row.current_streak : row.consecutive_logins;
+                return (
+                  <TableRow key={row.user_id}>
+                    {/* Name */}
+                    <TableCell>
+                      <p className="font-medium">{row.name}</p>
+                      <p className="text-xs text-muted-foreground">{row.email}</p>
+                    </TableCell>
 
-                  {/* Last Login */}
-                  <TableCell className="text-sm">
-                    {row.last_login === null ? (
-                      <span className="text-muted-foreground">Never</span>
-                    ) : (
-                      formatLastLogin(row.last_login, now)
-                    )}
-                  </TableCell>
+                    {/* Last Login */}
+                    <TableCell className="text-sm">
+                      {row.last_login === null ? (
+                        <span className="text-muted-foreground">Never</span>
+                      ) : (
+                        formatLastLogin(row.last_login, now)
+                      )}
+                    </TableCell>
 
-                  {/* Streak */}
-                  <TableCell>
-                    {row.consecutive_logins > 0 ? (
-                      <span className="inline-flex items-center gap-1 text-sm font-medium">
-                        <Flame className="h-3.5 w-3.5 text-orange-500" aria-hidden />
-                        {row.consecutive_logins}
-                      </span>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-
-                  {/* Total Logins */}
-                  <TableCell className="text-sm">{row.login_count}</TableCell>
-                </TableRow>
-              ))
+                    <TableCell className="text-sm">{row.login_count}</TableCell>
+                    <TableCell className="text-sm">{row.login_day_count}</TableCell>
+                    <TableCell>
+                      {streak > 0 ? (
+                        <span className="inline-flex items-center gap-1 text-sm font-medium">
+                          <Flame className="h-3.5 w-3.5 text-orange-500" aria-hidden />
+                          {streak}
+                        </span>
+                      ) : (
+                        <span className="text-sm text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {row.average_logins_per_active_day?.toFixed(2) ?? "—"}
+                    </TableCell>
+                    {onViewAnalytics ? (
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => onViewAnalytics(row)}
+                          aria-label={`View analytics for ${row.name}`}
+                        >
+                          <BarChart3 className="mr-1.5 h-4 w-4" aria-hidden />
+                          View analytics
+                        </Button>
+                      </TableCell>
+                    ) : null}
+                  </TableRow>
+                );
+              })
             )}
           </TableBody>
         </Table>
+      </div>
+      <div className="flex items-center justify-between text-sm text-muted-foreground">
+        <span>
+          {total === 0
+            ? "No users"
+            : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`}
+        </span>
+        <div className="flex gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={page <= 1}
+            onClick={() => onPageChange(page - 1)}
+            aria-label="Previous page"
+          >
+            Previous
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={page >= totalPages}
+            onClick={() => onPageChange(page + 1)}
+            aria-label="Next page"
+          >
+            Next
+          </Button>
+        </div>
       </div>
     </div>
   );

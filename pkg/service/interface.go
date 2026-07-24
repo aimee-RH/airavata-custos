@@ -49,7 +49,7 @@ type OrganizationService interface {
 	DeleteOrganization(ctx context.Context, id string) error
 }
 
-// UserService exposes user CRUD and merge.
+// UserService exposes user CRUD, merge, and activity reporting.
 type UserService interface {
 	CreateUser(ctx context.Context, user *models.User) (*models.User, error)
 	GetUser(ctx context.Context, id string) (*models.User, error)
@@ -60,6 +60,11 @@ type UserService interface {
 	UpdateUserStatus(ctx context.Context, id string, status models.UserStatus) (*models.User, error)
 	DeleteUser(ctx context.Context, id string) error
 	MergeUsers(ctx context.Context, survivingID, retiringID string) (*models.User, error)
+	// ListUserActivity returns paginated user activity summaries.
+	// InactiveDays > 0 restricts results to users inactive for at least that many days.
+	ListUserActivity(ctx context.Context, f store.UserActivityFilter) ([]store.UserActivityRow, int, error)
+	GetUserActivityAnalytics(ctx context.Context, windowDays int) (*store.UserActivityAnalytics, error)
+	GetSelectedUserActivityAnalytics(ctx context.Context, userID string, windowDays int) (*store.UserActivityAnalytics, error)
 }
 
 // UserIdentityService exposes external-identity linking.

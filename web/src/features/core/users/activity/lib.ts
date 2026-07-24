@@ -59,13 +59,22 @@ export function inactivityBand(daysSince: number | null): InactivityBand {
 /**
  * Returns only the rows that are considered inactive (warning, critical, or never),
  * sorted with "never" first, then longest inactive first.
+ *
+ * @param thresholdDays - Users inactive for at least this many days are included.
+ *   Defaults to INACTIVITY_THRESHOLD_DAYS. Users who have never logged in are
+ *   always included regardless of the threshold.
  */
-export function filterInactiveUsers(rows: UserActivityRow[], now: Date): UserActivityRow[] {
+export function filterInactiveUsers(
+  rows: UserActivityRow[],
+  now: Date,
+  thresholdDays: number = INACTIVITY_THRESHOLD_DAYS,
+): UserActivityRow[] {
   return rows
     .filter((r) => {
       const days = computeDaysSince(r.last_login, now);
-      const band = inactivityBand(days);
-      return band === "warning" || band === "critical" || band === "never";
+      // Never-logged-in users are always inactive
+      if (days === null) return true;
+      return days >= thresholdDays;
     })
     .sort((a, b) => {
       const daysA = computeDaysSince(a.last_login, now);
@@ -109,8 +118,11 @@ export function sortActivityRows(
         cmp = (daysB - daysA) * mult;
         break;
       }
-      case "consecutive_logins":
-        cmp = (a.consecutive_logins - b.consecutive_logins) * mult;
+      case "current_streak":
+        cmp = (a.current_streak - b.current_streak) * mult;
+        break;
+      case "login_day_count":
+        cmp = (a.login_day_count - b.login_day_count) * mult;
         break;
       case "login_count":
         cmp = (a.login_count - b.login_count) * mult;

@@ -17,19 +17,31 @@
 
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
-import { getUserActivity, type UserActivityParams } from "./api";
+import {
+  type InactiveUserParams,
+  type UserActivityParams,
+  getInactiveUsers,
+  getSelectedUserActivityAnalytics,
+  getUserActivity,
+  getUserActivityAnalytics,
+} from "./api";
 
 export const activityKeys = {
   all: ["user-activity"] as const,
   list: (params: UserActivityParams) => [...activityKeys.all, "list", params] as const,
+  inactive: (params: InactiveUserParams) => [...activityKeys.all, "inactive", params] as const,
+  analytics: (days: number) => [...activityKeys.all, "analytics", days] as const,
+  userAnalytics: (userID: string, days: number) =>
+    [...activityKeys.all, "user-analytics", userID, days] as const,
 };
 
 const DEFAULTS = {
   staleTime: 60_000,
   gcTime: 300_000,
   refetchOnWindowFocus: false,
+  placeholderData: keepPreviousData,
 } as const;
 
 export function useUserActivity(params: UserActivityParams = {}) {
@@ -39,5 +51,46 @@ export function useUserActivity(params: UserActivityParams = {}) {
     queryFn: () => getUserActivity(params),
     enabled: status === "authenticated",
     ...DEFAULTS,
+  });
+}
+
+export function useUserActivityAnalytics(windowDays: 7 | 30 | 90) {
+  const { status } = useSession();
+  return useQuery({
+    queryKey: activityKeys.analytics(windowDays),
+    queryFn: () => getUserActivityAnalytics(windowDays),
+    enabled: status === "authenticated",
+    staleTime: DEFAULTS.staleTime,
+    gcTime: DEFAULTS.gcTime,
+    refetchOnWindowFocus: DEFAULTS.refetchOnWindowFocus,
+  });
+}
+
+export function useSelectedUserActivityAnalytics(userID: string | null, windowDays: 7 | 30 | 90) {
+  const { status } = useSession();
+  return useQuery({
+    queryKey: activityKeys.userAnalytics(userID ?? "", windowDays),
+    queryFn: () => getSelectedUserActivityAnalytics(userID as string, windowDays),
+    enabled: status === "authenticated" && userID !== null,
+    staleTime: DEFAULTS.staleTime,
+    gcTime: DEFAULTS.gcTime,
+    refetchOnWindowFocus: DEFAULTS.refetchOnWindowFocus,
+  });
+}
+
+export function useInactiveUsers(params: Omit<InactiveUserParams, "offset">) {
+  const { status } = useSession();
+  return useInfiniteQuery({
+    queryKey: activityKeys.inactive(params),
+    queryFn: ({ pageParam }) => getInactiveUsers({ ...params, offset: pageParam }),
+    enabled: status === "authenticated",
+    initialPageParam: 0,
+    getNextPageParam: (lastPage, pages) => {
+      const loaded = pages.reduce((total, page) => total + page.items.length, 0);
+      return loaded < lastPage.total ? loaded : undefined;
+    },
+    staleTime: DEFAULTS.staleTime,
+    gcTime: DEFAULTS.gcTime,
+    refetchOnWindowFocus: DEFAULTS.refetchOnWindowFocus,
   });
 }

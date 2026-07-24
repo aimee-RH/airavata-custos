@@ -16,18 +16,64 @@
 // under the License.
 
 import { apiFetch } from "@/shared/api/client";
-import { userActivityListSchema, type UserActivityList } from "./schemas";
+import {
+  type ActivitySortKey,
+  type InactiveUserList,
+  type SortDirection,
+  type UserActivityAnalytics,
+  type UserActivityList,
+  inactiveUserListSchema,
+  userActivityAnalyticsSchema,
+  userActivityListSchema,
+} from "./schemas";
 
 export type UserActivityParams = {
+  query?: string;
+  limit?: number;
+  offset?: number;
+  sort?: ActivitySortKey;
+  direction?: SortDirection;
+};
+
+export type InactiveUserParams = {
+  days: number;
+  query?: string;
   limit?: number;
   offset?: number;
 };
 
-export async function getUserActivity(params: UserActivityParams): Promise<UserActivityList> {
+function queryString(params: Record<string, string | number | undefined>): string {
   const search = new URLSearchParams();
-  if (typeof params.limit === "number") search.set("limit", String(params.limit));
-  if (typeof params.offset === "number") search.set("offset", String(params.offset));
+  for (const [key, value] of Object.entries(params)) {
+    if (value !== undefined && value !== "") search.set(key, String(value));
+  }
   const query = search.toString();
-  const raw = await apiFetch(`/users/activity${query ? `?${query}` : ""}`);
+  return query ? `?${query}` : "";
+}
+
+export async function getUserActivity(params: UserActivityParams): Promise<UserActivityList> {
+  const raw = await apiFetch(`/users/activity${queryString(params)}`);
   return userActivityListSchema.parse(raw);
+}
+
+export async function getInactiveUsers(params: InactiveUserParams): Promise<InactiveUserList> {
+  const raw = await apiFetch(`/users/inactive${queryString(params)}`);
+  return inactiveUserListSchema.parse(raw);
+}
+
+export async function getUserActivityAnalytics(
+  windowDays: 7 | 30 | 90,
+): Promise<UserActivityAnalytics> {
+  const raw = await apiFetch(`/users/activity/analytics?window=${windowDays}`);
+  return userActivityAnalyticsSchema.parse(raw);
+}
+
+export async function getSelectedUserActivityAnalytics(
+  userID: string,
+  windowDays: 7 | 30 | 90,
+): Promise<UserActivityAnalytics> {
+  const raw = await apiFetch(
+    `/users/${encodeURIComponent(userID)}/activity/analytics?window=${windowDays}`,
+  );
+  return userActivityAnalyticsSchema.parse(raw);
 }

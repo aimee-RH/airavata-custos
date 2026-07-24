@@ -83,6 +83,118 @@ func TestListUsers_RequiresPrivilege(t *testing.T) {
 	}
 }
 
+func TestListUserActivity_RequiresDedicatedPrivilege(t *testing.T) {
+	_, _, srv := setupTestStack(t)
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/users/activity", nil)
+	// Ordinary users:read is intentionally insufficient for activity data.
+	req = withTestCaller(req, "operator", models.UsersRead)
+	srv.ServeHTTP(rr, req)
+	if rr.Code != http.StatusForbidden {
+		t.Fatalf("status: got %d, want 403", rr.Code)
+	}
+}
+
+func TestListUserActivity_WithDedicatedPrivilege(t *testing.T) {
+	_, _, srv := setupTestStack(t)
+	rr := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/users/activity", nil)
+	req = withTestCaller(req, "admin", models.UsersActivityRead)
+	srv.ServeHTTP(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("status: got %d, want 200", rr.Code)
+	}
+	var body UserActivityListResponse
+	if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Limit != 50 || body.Offset != 0 {
+		t.Fatalf("pagination metadata = limit %d offset %d", body.Limit, body.Offset)
+	}
+}
+
+func TestListUserActivityRejectsMalformedParameters(t *testing.T) {
+	_, _, srv := setupTestStack(t)
+	for _, path := range []string{
+		"/users/activity?limit=nope",
+		"/users/activity?limit=0",
+		"/users/activity?limit=201",
+		"/users/activity?offset=-1",
+		"/users/activity?sort=password",
+		"/users/activity?direction=sideways",
+	} {
+		t.Run(path, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			req := withTestCaller(httptest.NewRequest(http.MethodGet, path, nil), "admin", models.UsersActivityRead)
+			srv.ServeHTTP(rr, req)
+			if rr.Code != http.StatusBadRequest {
+				t.Fatalf("status for %s: got %d, want 400", path, rr.Code)
+			}
+		})
+	}
+}
+
+func TestUserActivityAnalyticsAuthorizationAndValidation(t *testing.T) {
+	_, _, srv := setupTestStack(t)
+	for _, tc := range []struct {
+		path       string
+		privileges []models.PrivilegeKey
+		want       int
+	}{
+		{path: "/users/activity/analytics", privileges: []models.PrivilegeKey{models.UsersRead}, want: http.StatusForbidden},
+		{path: "/users/activity/analytics?window=30", privileges: []models.PrivilegeKey{models.UsersActivityRead}, want: http.StatusOK},
+		{path: "/users/activity/analytics?window=14", privileges: []models.PrivilegeKey{models.UsersActivityRead}, want: http.StatusBadRequest},
+		{path: "/users/activity/analytics?window=nope", privileges: []models.PrivilegeKey{models.UsersActivityRead}, want: http.StatusBadRequest},
+	} {
+		rr := httptest.NewRecorder()
+		req := withTestCaller(httptest.NewRequest(http.MethodGet, tc.path, nil), "caller", tc.privileges...)
+		srv.ServeHTTP(rr, req)
+		if rr.Code != tc.want {
+			t.Fatalf("status for %s = %d, want %d", tc.path, rr.Code, tc.want)
+		}
+	}
+}
+
+func TestListInactiveUsersAuthorizationValidationAndDefaults(t *testing.T) {
+	_, _, srv := setupTestStack(t)
+
+	for _, tc := range []struct {
+		name       string
+		privileges []models.PrivilegeKey
+		want       int
+	}{
+		{name: "users read is insufficient", privileges: []models.PrivilegeKey{models.UsersRead}, want: http.StatusForbidden},
+		{name: "dedicated privilege", privileges: []models.PrivilegeKey{models.UsersActivityRead}, want: http.StatusOK},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rr := httptest.NewRecorder()
+			req := withTestCaller(httptest.NewRequest(http.MethodGet, "/users/inactive", nil), "caller", tc.privileges...)
+			srv.ServeHTTP(rr, req)
+			if rr.Code != tc.want {
+				t.Fatalf("status = %d, want %d", rr.Code, tc.want)
+			}
+			if tc.want == http.StatusOK {
+				var body InactiveUserListResponse
+				if err := json.NewDecoder(rr.Body).Decode(&body); err != nil {
+					t.Fatal(err)
+				}
+				if body.Days != 7 || body.Limit != 50 || body.Offset != 0 || body.Items == nil {
+					t.Fatalf("unexpected inactive response: %+v", body)
+				}
+			}
+		})
+	}
+
+	for _, path := range []string{"/users/inactive?days=0", "/users/inactive?days=3651", "/users/inactive?days=nope"} {
+		rr := httptest.NewRecorder()
+		req := withTestCaller(httptest.NewRequest(http.MethodGet, path, nil), "admin", models.UsersActivityRead)
+		srv.ServeHTTP(rr, req)
+		if rr.Code != http.StatusBadRequest {
+			t.Fatalf("status for %s: got %d, want 400", path, rr.Code)
+		}
+	}
+}
+
 func TestListUsers_ReturnsPage(t *testing.T) {
 	_, svc, srv := setupTestStack(t)
 	org, err := svc.CreateOrganization(t.Context(), &models.Organization{

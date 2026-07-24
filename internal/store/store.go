@@ -25,6 +25,59 @@ import (
 	"github.com/apache/airavata-custos/pkg/models"
 )
 
+// UserActivityRow is the complete per-user activity summary returned by ListActivity.
+type UserActivityRow struct {
+	UserID                    string     `json:"user_id"                                db:"user_id"`
+	Name                      string     `json:"name"                                   db:"name"`
+	Email                     string     `json:"email"                                  db:"email"`
+	EffectiveTimezone         string     `json:"effective_timezone"                     db:"effective_timezone"`
+	LastLogin                 *time.Time `json:"last_login"                             db:"last_login"`
+	LastLoginLocalDate        *string    `json:"last_login_local_date"                  db:"last_login_local_date"`
+	InactiveDays              *int       `json:"inactive_days"                          db:"inactive_days"`
+	LoginCount                uint64     `json:"login_count"                            db:"login_count"`
+	LoginDayCount             uint64     `json:"login_day_count"                        db:"login_day_count"`
+	CurrentStreak             uint64     `json:"current_streak"                         db:"-"`
+	ConsecutiveLogins         uint64     `json:"consecutive_logins"                     db:"-"` // Deprecated Phase 1 compatibility alias.
+	AverageLoginsPerActiveDay *float64   `json:"average_logins_per_active_day"           db:"-"`
+	StoredLoginStreak         uint64     `json:"-"                                      db:"stored_login_streak"`
+}
+
+// UserActivityFilter controls server-side filtering, ordering, and pagination.
+type UserActivityFilter struct {
+	Query        string
+	InactiveDays int
+	Limit        int
+	Offset       int
+	Sort         string
+	Direction    string
+	Now          time.Time
+}
+
+// UserActivityTrendPoint is one user-local calendar-day analytics bucket.
+type UserActivityTrendPoint struct {
+	Date        string `json:"date" db:"date"`
+	ActiveUsers uint64 `json:"active_users" db:"active_users"`
+	LoginCount  uint64 `json:"login_count" db:"login_count"`
+}
+
+// UserActivityAnalytics contains lifetime, monthly, and rolling-window engagement metrics.
+type UserActivityAnalytics struct {
+	GeneratedAt         time.Time                `json:"generated_at"`
+	WindowDays          int                      `json:"window_days"`
+	TotalUsers          uint64                   `json:"total_users" db:"total_users"`
+	UsersEverLoggedIn   uint64                   `json:"users_ever_logged_in" db:"users_ever_logged_in"`
+	LifetimeLoginCount  uint64                   `json:"lifetime_login_count" db:"lifetime_login_count"`
+	LifetimeActiveDays  uint64                   `json:"lifetime_active_days" db:"lifetime_active_days"`
+	ActiveUsers         uint64                   `json:"active_users" db:"active_users"`
+	WindowLoginCount    uint64                   `json:"window_login_count" db:"window_login_count"`
+	WindowActiveDays    uint64                   `json:"window_active_days" db:"window_active_days"`
+	MonthlyActiveUsers  uint64                   `json:"monthly_active_users" db:"monthly_active_users"`
+	MonthlyLoginCount   uint64                   `json:"monthly_login_count" db:"monthly_login_count"`
+	MonthlyActiveDays   uint64                   `json:"monthly_active_days" db:"monthly_active_days"`
+	AverageLoginsPerDay *float64                 `json:"average_logins_per_active_day"`
+	Trend               []UserActivityTrendPoint `json:"trend"`
+}
+
 // UserStore defines persistence operations for users.
 type UserStore interface {
 	// FindByID returns the user with the given ID, or nil if not found.
@@ -46,6 +99,14 @@ type UserStore interface {
 	UpdateStatus(ctx context.Context, tx *sql.Tx, id string, status models.UserStatus) error
 	// Delete removes a user by ID within the provided transaction.
 	Delete(ctx context.Context, tx *sql.Tx, id string) error
+	// ListActivity returns a page of user activity summaries ordered by
+	// last_login descending (never-logged-in users last), plus the total count
+	// matching the filter.
+	ListActivity(ctx context.Context, f UserActivityFilter) ([]UserActivityRow, int, error)
+	// GetActivityAnalytics derives system-wide rolling and monthly metrics from daily facts.
+	GetActivityAnalytics(ctx context.Context, now time.Time, windowDays int) (*UserActivityAnalytics, error)
+	// GetUserActivityAnalytics derives the same metrics restricted to one user.
+	GetUserActivityAnalytics(ctx context.Context, userID string, now time.Time, windowDays int) (*UserActivityAnalytics, error)
 }
 
 // OrganizationStore defines persistence operations for organizations.

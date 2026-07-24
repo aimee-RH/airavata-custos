@@ -21,7 +21,10 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
+	"time"
 
+	"github.com/apache/airavata-custos/internal/store"
 	"github.com/apache/airavata-custos/pkg/events"
 	"github.com/apache/airavata-custos/pkg/models"
 )
@@ -211,6 +214,109 @@ func (s *Service) UpdateUserStatus(ctx context.Context, id string, status models
 
 	s.eventBus.Publish(ctx, events.UserUpdateEvent, existing)
 	return existing, nil
+}
+
+// ListUserActivity validates and returns server-side filtered activity summaries.
+func (s *Service) ListUserActivity(ctx context.Context, f store.UserActivityFilter) ([]store.UserActivityRow, int, error) {
+	f.Query = strings.TrimSpace(f.Query)
+	if f.Limit < 1 || f.Limit > 200 {
+		return nil, 0, fmt.Errorf("%w: limit must be between 1 and 200", ErrInvalidInput)
+	}
+	if f.Offset < 0 {
+		return nil, 0, fmt.Errorf("%w: offset must be non-negative", ErrInvalidInput)
+	}
+	if f.InactiveDays < 0 || f.InactiveDays > 3650 {
+		return nil, 0, fmt.Errorf("%w: inactive days must be between 1 and 3650", ErrInvalidInput)
+	}
+	if f.InactiveDays == 0 && f.Sort == "" {
+		f.Sort = "last_login"
+	}
+	if f.InactiveDays > 0 && f.Sort == "" {
+		f.Sort = "inactivity"
+	}
+	if f.Direction == "" {
+		f.Direction = "desc"
+	}
+	validSort := map[string]bool{
+		"name": true, "last_login": true, "login_count": true,
+		"login_day_count": true, "current_streak": true, "inactivity": f.InactiveDays > 0,
+	}
+	if !validSort[f.Sort] {
+		return nil, 0, fmt.Errorf("%w: unsupported activity sort %q", ErrInvalidInput, f.Sort)
+	}
+	if f.Direction != "asc" && f.Direction != "desc" {
+		return nil, 0, fmt.Errorf("%w: direction must be asc or desc", ErrInvalidInput)
+	}
+	if f.Now.IsZero() {
+		f.Now = nowUTC()
+	} else {
+		f.Now = f.Now.UTC()
+	}
+
+	rows, total, err := s.users.ListActivity(ctx, f)
+	if err != nil {
+		return nil, 0, fmt.Errorf("list user activity: %w", err)
+	}
+	for i := range rows {
+		row := &rows[i]
+		location, loadErr := time.LoadLocation(row.EffectiveTimezone)
+		if loadErr != nil {
+			row.EffectiveTimezone = "UTC"
+			location = time.UTC
+		}
+		if row.LastLoginLocalDate != nil {
+			lastDate, parseErr := time.Parse(loginDateLayout, *row.LastLoginLocalDate)
+			if parseErr != nil {
+				return nil, 0, fmt.Errorf("derive current streak: %w", parseErr)
+			}
+			today, _ := time.Parse(loginDateLayout, f.Now.In(location).Format(loginDateLayout))
+			days := int(today.Sub(lastDate).Hours() / 24)
+			if days >= 0 && days <= 1 {
+				row.CurrentStreak = row.StoredLoginStreak
+				row.ConsecutiveLogins = row.CurrentStreak
+			}
+		}
+		if row.LoginDayCount > 0 {
+			average := float64(row.LoginCount) / float64(row.LoginDayCount)
+			row.AverageLoginsPerActiveDay = &average
+		}
+	}
+	return rows, total, nil
+}
+
+// GetUserActivityAnalytics validates the rolling window and returns daily-fact analytics.
+func (s *Service) GetUserActivityAnalytics(ctx context.Context, windowDays int) (*store.UserActivityAnalytics, error) {
+	if windowDays != 7 && windowDays != 30 && windowDays != 90 {
+		return nil, fmt.Errorf("%w: window must be 7, 30, or 90 days", ErrInvalidInput)
+	}
+	result, err := s.users.GetActivityAnalytics(ctx, nowUTC(), windowDays)
+	if err != nil {
+		return nil, fmt.Errorf("get user activity analytics: %w", err)
+	}
+	return result, nil
+}
+
+// GetSelectedUserActivityAnalytics returns engagement metrics for an explicitly
+// selected user. It never infers the subject from the authenticated admin.
+func (s *Service) GetSelectedUserActivityAnalytics(ctx context.Context, userID string, windowDays int) (*store.UserActivityAnalytics, error) {
+	if userID == "" {
+		return nil, fmt.Errorf("%w: user id is required", ErrInvalidInput)
+	}
+	if windowDays != 7 && windowDays != 30 && windowDays != 90 {
+		return nil, fmt.Errorf("%w: window must be 7, 30, or 90 days", ErrInvalidInput)
+	}
+	user, err := s.users.FindByID(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("get analytics user: %w", err)
+	}
+	if user == nil {
+		return nil, ErrNotFound
+	}
+	result, err := s.users.GetUserActivityAnalytics(ctx, userID, nowUTC(), windowDays)
+	if err != nil {
+		return nil, fmt.Errorf("get selected user activity analytics: %w", err)
+	}
+	return result, nil
 }
 
 // DeleteUser removes a user by ID.

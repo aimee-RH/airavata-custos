@@ -78,6 +78,8 @@ func setupTestDB(t *testing.T) *sqlx.DB {
 func truncateAll(t *testing.T, database *sqlx.DB) {
 	t.Helper()
 	tables := []string{
+		"user_login_daily",
+		"user_login_events",
 		"user_roles",
 		"role_privileges",
 		"roles",

@@ -33,8 +33,14 @@ function row(overrides: Partial<UserActivityRow> = {}): UserActivityRow {
     name: "Alice Example",
     email: "alice@example.org",
     last_login: "2026-07-20T08:00:00Z",
+    effective_timezone: "UTC",
+    last_login_local_date: "2026-07-20",
+    inactive_days: 3,
     login_count: 10,
+    login_day_count: 5,
+    current_streak: 3,
     consecutive_logins: 3,
+    average_logins_per_active_day: 2,
     ...overrides,
   };
 }
@@ -165,7 +171,7 @@ describe("sortActivityRows", () => {
   });
 
   it("sorts by consecutive_logins descending", () => {
-    const sorted = sortActivityRows(all, "consecutive_logins", "desc", NOW);
+    const sorted = sortActivityRows(all, "current_streak", "desc", NOW);
     expect(sorted[0]?.user_id).toBe("u-a");
     expect(sorted[1]?.user_id).toBe("u-b");
   });

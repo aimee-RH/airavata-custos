@@ -109,9 +109,9 @@ func (s *Service) ResolveCaller(ctx context.Context, claims *identity.Claims) (*
 	if claims == nil || claims.Sub == "" {
 		return nil, nil, identity.ErrNotLinked
 	}
-	now := time.Now()
+	now := nowUTC()
 	if hit, ok := s.identityCache.get(claims.Sub, now); ok {
-		return hit.caller, hit.privs, nil
+		return callerWithSessionClaims(hit.caller.UserID, claims), hit.privs, nil
 	}
 	user, err := s.users.GetUserByOIDCSub(ctx, claims.Sub)
 	if err != nil {
@@ -127,7 +127,7 @@ func (s *Service) ResolveCaller(ctx context.Context, claims *identity.Claims) (*
 	if err != nil {
 		return nil, nil, err
 	}
-	caller := &identity.Caller{UserID: user.ID}
+	caller := callerWithSessionClaims(user.ID, claims)
 	s.identityCache.set(claims.Sub, caller, privs, now)
 	return caller, privs, nil
 }
@@ -198,6 +198,18 @@ func (s *Service) linkBySub(ctx context.Context, claims *identity.Claims) (*mode
 	slog.Info("identity linked via email fallback", "user_id", user.ID, "email", claims.Email)
 	user.Status = models.UserActive
 	return user, nil
+}
+
+func callerWithSessionClaims(userID string, claims *identity.Claims) *identity.Caller {
+	return &identity.Caller{
+		UserID:    userID,
+		Issuer:    claims.Issuer,
+		Subject:   claims.Sub,
+		SessionID: claims.SessionID,
+		AuthTime:  claims.AuthTime,
+		TokenID:   claims.TokenID,
+		IssuedAt:  claims.IssuedAt,
+	}
 }
 
 func (s *Service) writeIdentityAuditTx(ctx context.Context, tx *sql.Tx, userID string, details map[string]any) error {

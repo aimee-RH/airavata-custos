@@ -219,6 +219,9 @@ var _ CoreService = &CoreServiceMock{}
 //			GetRoleFunc: func(ctx context.Context, roleID string) (*models.Role, error) {
 //				panic("mock out the GetRole method")
 //			},
+//			GetSelectedUserActivityAnalyticsFunc: func(ctx context.Context, userID string, windowDays int) (*store.UserActivityAnalytics, error) {
+//				panic("mock out the GetSelectedUserActivityAnalytics method")
+//			},
 //			GetTotalSUUsageForAllocationFunc: func(ctx context.Context, allocationID string) (int64, error) {
 //				panic("mock out the GetTotalSUUsageForAllocation method")
 //			},
@@ -227,6 +230,9 @@ var _ CoreService = &CoreServiceMock{}
 //			},
 //			GetUserFunc: func(ctx context.Context, id string) (*models.User, error) {
 //				panic("mock out the GetUser method")
+//			},
+//			GetUserActivityAnalyticsFunc: func(ctx context.Context, windowDays int) (*store.UserActivityAnalytics, error) {
+//				panic("mock out the GetUserActivityAnalytics method")
 //			},
 //			GetUserByEmailFunc: func(ctx context.Context, email string) (*models.User, error) {
 //				panic("mock out the GetUserByEmail method")
@@ -344,6 +350,9 @@ var _ CoreService = &CoreServiceMock{}
 //			},
 //			ListUsagesForAllocationFunc: func(ctx context.Context, allocationID string) ([]models.ComputeAllocationUsage, error) {
 //				panic("mock out the ListUsagesForAllocation method")
+//			},
+//			ListUserActivityFunc: func(ctx context.Context, f store.UserActivityFilter) ([]store.UserActivityRow, int, error) {
+//				panic("mock out the ListUserActivity method")
 //			},
 //			ListUserIdentitiesForUserFunc: func(ctx context.Context, userID string) ([]models.UserIdentity, error) {
 //				panic("mock out the ListUserIdentitiesForUser method")
@@ -628,6 +637,9 @@ type CoreServiceMock struct {
 	// GetRoleFunc mocks the GetRole method.
 	GetRoleFunc func(ctx context.Context, roleID string) (*models.Role, error)
 
+	// GetSelectedUserActivityAnalyticsFunc mocks the GetSelectedUserActivityAnalytics method.
+	GetSelectedUserActivityAnalyticsFunc func(ctx context.Context, userID string, windowDays int) (*store.UserActivityAnalytics, error)
+
 	// GetTotalSUUsageForAllocationFunc mocks the GetTotalSUUsageForAllocation method.
 	GetTotalSUUsageForAllocationFunc func(ctx context.Context, allocationID string) (int64, error)
 
@@ -636,6 +648,9 @@ type CoreServiceMock struct {
 
 	// GetUserFunc mocks the GetUser method.
 	GetUserFunc func(ctx context.Context, id string) (*models.User, error)
+
+	// GetUserActivityAnalyticsFunc mocks the GetUserActivityAnalytics method.
+	GetUserActivityAnalyticsFunc func(ctx context.Context, windowDays int) (*store.UserActivityAnalytics, error)
 
 	// GetUserByEmailFunc mocks the GetUserByEmail method.
 	GetUserByEmailFunc func(ctx context.Context, email string) (*models.User, error)
@@ -753,6 +768,9 @@ type CoreServiceMock struct {
 
 	// ListUsagesForAllocationFunc mocks the ListUsagesForAllocation method.
 	ListUsagesForAllocationFunc func(ctx context.Context, allocationID string) ([]models.ComputeAllocationUsage, error)
+
+	// ListUserActivityFunc mocks the ListUserActivity method.
+	ListUserActivityFunc func(ctx context.Context, f store.UserActivityFilter) ([]store.UserActivityRow, int, error)
 
 	// ListUserIdentitiesForUserFunc mocks the ListUserIdentitiesForUser method.
 	ListUserIdentitiesForUserFunc func(ctx context.Context, userID string) ([]models.UserIdentity, error)
@@ -1332,6 +1350,15 @@ type CoreServiceMock struct {
 			// RoleID is the roleID argument value.
 			RoleID string
 		}
+		// GetSelectedUserActivityAnalytics holds details about calls to the GetSelectedUserActivityAnalytics method.
+		GetSelectedUserActivityAnalytics []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// UserID is the userID argument value.
+			UserID string
+			// WindowDays is the windowDays argument value.
+			WindowDays int
+		}
 		// GetTotalSUUsageForAllocation holds details about calls to the GetTotalSUUsageForAllocation method.
 		GetTotalSUUsageForAllocation []struct {
 			// Ctx is the ctx argument value.
@@ -1354,6 +1381,13 @@ type CoreServiceMock struct {
 			Ctx context.Context
 			// ID is the id argument value.
 			ID string
+		}
+		// GetUserActivityAnalytics holds details about calls to the GetUserActivityAnalytics method.
+		GetUserActivityAnalytics []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// WindowDays is the windowDays argument value.
+			WindowDays int
 		}
 		// GetUserByEmail holds details about calls to the GetUserByEmail method.
 		GetUserByEmail []struct {
@@ -1638,6 +1672,13 @@ type CoreServiceMock struct {
 			// AllocationID is the allocationID argument value.
 			AllocationID string
 		}
+		// ListUserActivity holds details about calls to the ListUserActivity method.
+		ListUserActivity []struct {
+			// Ctx is the ctx argument value.
+			Ctx context.Context
+			// F is the f argument value.
+			F store.UserActivityFilter
+		}
 		// ListUserIdentitiesForUser holds details about calls to the ListUserIdentitiesForUser method.
 		ListUserIdentitiesForUser []struct {
 			// Ctx is the ctx argument value.
@@ -1919,9 +1960,11 @@ type CoreServiceMock struct {
 	lockGetProject                                             sync.RWMutex
 	lockGetProjectByOriginatedID                               sync.RWMutex
 	lockGetRole                                                sync.RWMutex
+	lockGetSelectedUserActivityAnalytics                       sync.RWMutex
 	lockGetTotalSUUsageForAllocation                           sync.RWMutex
 	lockGetTotalSUUsageForUserInAllocation                     sync.RWMutex
 	lockGetUser                                                sync.RWMutex
+	lockGetUserActivityAnalytics                               sync.RWMutex
 	lockGetUserByEmail                                         sync.RWMutex
 	lockGetUserByUserIdentity                                  sync.RWMutex
 	lockGetUserIdentity                                        sync.RWMutex
@@ -1961,6 +2004,7 @@ type CoreServiceMock struct {
 	lockListRoles                                              sync.RWMutex
 	lockListUsagesByUser                                       sync.RWMutex
 	lockListUsagesForAllocation                                sync.RWMutex
+	lockListUserActivity                                       sync.RWMutex
 	lockListUserIdentitiesForUser                              sync.RWMutex
 	lockListUserPrivileges                                     sync.RWMutex
 	lockListUserRoles                                          sync.RWMutex
@@ -4437,6 +4481,46 @@ func (mock *CoreServiceMock) GetRoleCalls() []struct {
 	return calls
 }
 
+// GetSelectedUserActivityAnalytics calls GetSelectedUserActivityAnalyticsFunc.
+func (mock *CoreServiceMock) GetSelectedUserActivityAnalytics(ctx context.Context, userID string, windowDays int) (*store.UserActivityAnalytics, error) {
+	if mock.GetSelectedUserActivityAnalyticsFunc == nil {
+		panic("CoreServiceMock.GetSelectedUserActivityAnalyticsFunc: method is nil but CoreService.GetSelectedUserActivityAnalytics was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		UserID     string
+		WindowDays int
+	}{
+		Ctx:        ctx,
+		UserID:     userID,
+		WindowDays: windowDays,
+	}
+	mock.lockGetSelectedUserActivityAnalytics.Lock()
+	mock.calls.GetSelectedUserActivityAnalytics = append(mock.calls.GetSelectedUserActivityAnalytics, callInfo)
+	mock.lockGetSelectedUserActivityAnalytics.Unlock()
+	return mock.GetSelectedUserActivityAnalyticsFunc(ctx, userID, windowDays)
+}
+
+// GetSelectedUserActivityAnalyticsCalls gets all the calls that were made to GetSelectedUserActivityAnalytics.
+// Check the length with:
+//
+//	len(mockedCoreService.GetSelectedUserActivityAnalyticsCalls())
+func (mock *CoreServiceMock) GetSelectedUserActivityAnalyticsCalls() []struct {
+	Ctx        context.Context
+	UserID     string
+	WindowDays int
+} {
+	var calls []struct {
+		Ctx        context.Context
+		UserID     string
+		WindowDays int
+	}
+	mock.lockGetSelectedUserActivityAnalytics.RLock()
+	calls = mock.calls.GetSelectedUserActivityAnalytics
+	mock.lockGetSelectedUserActivityAnalytics.RUnlock()
+	return calls
+}
+
 // GetTotalSUUsageForAllocation calls GetTotalSUUsageForAllocationFunc.
 func (mock *CoreServiceMock) GetTotalSUUsageForAllocation(ctx context.Context, allocationID string) (int64, error) {
 	if mock.GetTotalSUUsageForAllocationFunc == nil {
@@ -4546,6 +4630,42 @@ func (mock *CoreServiceMock) GetUserCalls() []struct {
 	mock.lockGetUser.RLock()
 	calls = mock.calls.GetUser
 	mock.lockGetUser.RUnlock()
+	return calls
+}
+
+// GetUserActivityAnalytics calls GetUserActivityAnalyticsFunc.
+func (mock *CoreServiceMock) GetUserActivityAnalytics(ctx context.Context, windowDays int) (*store.UserActivityAnalytics, error) {
+	if mock.GetUserActivityAnalyticsFunc == nil {
+		panic("CoreServiceMock.GetUserActivityAnalyticsFunc: method is nil but CoreService.GetUserActivityAnalytics was just called")
+	}
+	callInfo := struct {
+		Ctx        context.Context
+		WindowDays int
+	}{
+		Ctx:        ctx,
+		WindowDays: windowDays,
+	}
+	mock.lockGetUserActivityAnalytics.Lock()
+	mock.calls.GetUserActivityAnalytics = append(mock.calls.GetUserActivityAnalytics, callInfo)
+	mock.lockGetUserActivityAnalytics.Unlock()
+	return mock.GetUserActivityAnalyticsFunc(ctx, windowDays)
+}
+
+// GetUserActivityAnalyticsCalls gets all the calls that were made to GetUserActivityAnalytics.
+// Check the length with:
+//
+//	len(mockedCoreService.GetUserActivityAnalyticsCalls())
+func (mock *CoreServiceMock) GetUserActivityAnalyticsCalls() []struct {
+	Ctx        context.Context
+	WindowDays int
+} {
+	var calls []struct {
+		Ctx        context.Context
+		WindowDays int
+	}
+	mock.lockGetUserActivityAnalytics.RLock()
+	calls = mock.calls.GetUserActivityAnalytics
+	mock.lockGetUserActivityAnalytics.RUnlock()
 	return calls
 }
 
@@ -5970,6 +6090,42 @@ func (mock *CoreServiceMock) ListUsagesForAllocationCalls() []struct {
 	mock.lockListUsagesForAllocation.RLock()
 	calls = mock.calls.ListUsagesForAllocation
 	mock.lockListUsagesForAllocation.RUnlock()
+	return calls
+}
+
+// ListUserActivity calls ListUserActivityFunc.
+func (mock *CoreServiceMock) ListUserActivity(ctx context.Context, f store.UserActivityFilter) ([]store.UserActivityRow, int, error) {
+	if mock.ListUserActivityFunc == nil {
+		panic("CoreServiceMock.ListUserActivityFunc: method is nil but CoreService.ListUserActivity was just called")
+	}
+	callInfo := struct {
+		Ctx context.Context
+		F   store.UserActivityFilter
+	}{
+		Ctx: ctx,
+		F:   f,
+	}
+	mock.lockListUserActivity.Lock()
+	mock.calls.ListUserActivity = append(mock.calls.ListUserActivity, callInfo)
+	mock.lockListUserActivity.Unlock()
+	return mock.ListUserActivityFunc(ctx, f)
+}
+
+// ListUserActivityCalls gets all the calls that were made to ListUserActivity.
+// Check the length with:
+//
+//	len(mockedCoreService.ListUserActivityCalls())
+func (mock *CoreServiceMock) ListUserActivityCalls() []struct {
+	Ctx context.Context
+	F   store.UserActivityFilter
+} {
+	var calls []struct {
+		Ctx context.Context
+		F   store.UserActivityFilter
+	}
+	mock.lockListUserActivity.RLock()
+	calls = mock.calls.ListUserActivity
+	mock.lockListUserActivity.RUnlock()
 	return calls
 }
 

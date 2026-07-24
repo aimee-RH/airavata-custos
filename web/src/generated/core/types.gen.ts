@@ -286,6 +286,14 @@ export type ComputeClusterUser = {
     user_id?: string;
 };
 
+export type InactiveUserListResponse = {
+    days?: number;
+    items?: Array<UserActivityRow>;
+    limit?: number;
+    offset?: number;
+    total?: number;
+};
+
 export type Organization = {
     id?: string;
     name?: string;
@@ -300,7 +308,7 @@ export type OrganizationListResponse = {
     total?: number;
 };
 
-export type PrivilegeKey = 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
+export type PrivilegeKey = 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:users:activity:read' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
 
 export type Project = {
     created_time?: string;
@@ -408,11 +416,68 @@ export type User = {
     email?: string;
     first_name?: string;
     id?: string;
+    last_login?: string;
+    last_login_local_date?: string;
     last_name?: string;
+    login_count?: number;
+    login_day_count?: number;
+    login_streak?: number;
     middle_name?: string;
     organization_id?: string;
     status?: UserStatus;
+    timezone?: string;
     type?: UserType;
+};
+
+export type UserActivityAnalytics = {
+    active_users?: number;
+    average_logins_per_active_day?: number | null;
+    generated_at?: string;
+    lifetime_active_days?: number;
+    lifetime_login_count?: number;
+    monthly_active_days?: number;
+    monthly_active_users?: number;
+    monthly_login_count?: number;
+    total_users?: number;
+    trend?: Array<UserActivityTrendPoint>;
+    users_ever_logged_in?: number;
+    window_active_days?: number;
+    window_days?: number;
+    window_login_count?: number;
+};
+
+export type UserActivityListResponse = {
+    items?: Array<UserActivityRow>;
+    limit?: number;
+    offset?: number;
+    total?: number;
+};
+
+export type UserActivityRow = {
+    average_logins_per_active_day?: number | null;
+    /**
+     * Deprecated Phase 1 compatibility alias.
+     */
+    consecutive_logins?: number;
+    current_streak?: number;
+    effective_timezone?: string;
+    email?: string;
+    last_login?: string | null;
+    last_login_local_date?: string | null;
+    /**
+     * User-local calendar days since the last login; null for never-logged-in users.
+     */
+    inactive_days?: number | null;
+    login_count?: number;
+    login_day_count?: number;
+    name?: string;
+    user_id?: string;
+};
+
+export type UserActivityTrendPoint = {
+    active_users?: number;
+    date?: string;
+    login_count?: number;
 };
 
 export type UserAllocationSuTotalResponse = {
@@ -2753,7 +2818,7 @@ export type GetPrivilegesByKeyHoldersData = {
         /**
          * Privilege key
          */
-        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
+        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:users:activity:read' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
     };
     query?: never;
     url: '/privileges/{key}/holders';
@@ -3266,7 +3331,7 @@ export type DeleteRolesByIdPrivilegesByKeyData = {
         /**
          * Privilege key
          */
-        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
+        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:users:activity:read' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
     };
     query?: never;
     url: '/roles/{id}/privileges/{key}';
@@ -3892,7 +3957,7 @@ export type DeleteUsersByIdPrivilegesByKeyData = {
         /**
          * Privilege key
          */
-        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
+        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:users:activity:read' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
     };
     query?: never;
     url: '/users/{id}/privileges/{key}';
@@ -4136,6 +4201,167 @@ export type GetUsersByIdUserIdentitiesResponses = {
 };
 
 export type GetUsersByIdUserIdentitiesResponse = GetUsersByIdUserIdentitiesResponses[keyof GetUsersByIdUserIdentitiesResponses];
+
+export type GetUsersActivityData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Case-insensitive name or email search
+         */
+        query?: string;
+        /**
+         * Page size (default 50, max 200)
+         */
+        limit?: number;
+        /**
+         * Page offset
+         */
+        offset?: number;
+        /**
+         * Sort field: name, last_login, login_count, login_day_count, or current_streak
+         */
+        sort?: string;
+        /**
+         * Sort direction: asc or desc
+         */
+        direction?: string;
+    };
+    url: '/users/activity';
+};
+
+export type GetUsersActivityErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        error?: string;
+    };
+};
+
+export type GetUsersActivityError = GetUsersActivityErrors[keyof GetUsersActivityErrors];
+
+export type GetUsersActivityResponses = {
+    /**
+     * OK
+     */
+    200: UserActivityListResponse;
+};
+
+export type GetUsersActivityResponse = GetUsersActivityResponses[keyof GetUsersActivityResponses];
+
+export type GetUsersActivityAnalyticsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Rolling window in days: 7, 30, or 90 (default 30)
+         */
+        window?: number;
+    };
+    url: '/users/activity/analytics';
+};
+
+export type GetUsersActivityAnalyticsErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        error?: string;
+    };
+};
+
+export type GetUsersActivityAnalyticsError = GetUsersActivityAnalyticsErrors[keyof GetUsersActivityAnalyticsErrors];
+
+export type GetUsersActivityAnalyticsResponses = {
+    /**
+     * OK
+     */
+    200: UserActivityAnalytics;
+};
+
+export type GetUsersActivityAnalyticsResponse = GetUsersActivityAnalyticsResponses[keyof GetUsersActivityAnalyticsResponses];
+
+export type GetUsersByIdActivityAnalyticsData = {
+    body?: never;
+    path: {
+        /**
+         * User ID
+         */
+        id: string;
+    };
+    query?: {
+        /**
+         * Rolling window in days: 7, 30, or 90 (default 30)
+         */
+        window?: number;
+    };
+    url: '/users/{id}/activity/analytics';
+};
+
+export type GetUsersByIdActivityAnalyticsErrors = {
+    /**
+     * Bad Request
+     */
+    400: unknown;
+    /**
+     * Not Found
+     */
+    404: unknown;
+};
+
+export type GetUsersByIdActivityAnalyticsResponses = {
+    /**
+     * OK
+     */
+    200: UserActivityAnalytics;
+};
+
+export type GetUsersByIdActivityAnalyticsResponse = GetUsersByIdActivityAnalyticsResponses[keyof GetUsersByIdActivityAnalyticsResponses];
+
+export type GetUsersInactiveData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Minimum inactive calendar days (default 7, max 3650)
+         */
+        days?: number;
+        /**
+         * Case-insensitive name or email search
+         */
+        query?: string;
+        /**
+         * Page size (default 50, max 200)
+         */
+        limit?: number;
+        /**
+         * Page offset
+         */
+        offset?: number;
+    };
+    url: '/users/inactive';
+};
+
+export type GetUsersInactiveErrors = {
+    /**
+     * Bad Request
+     */
+    400: {
+        error?: string;
+    };
+};
+
+export type GetUsersInactiveError = GetUsersInactiveErrors[keyof GetUsersInactiveErrors];
+
+export type GetUsersInactiveResponses = {
+    /**
+     * OK
+     */
+    200: InactiveUserListResponse;
+};
+
+export type GetUsersInactiveResponse = GetUsersInactiveResponses[keyof GetUsersInactiveResponses];
 
 export type PostUsersMergeData = {
     /**

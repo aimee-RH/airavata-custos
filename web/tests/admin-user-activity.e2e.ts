@@ -32,11 +32,15 @@ test.describe("User Activity page", () => {
   test("navigating to /admin/users/activity renders the page heading", async ({ page }) => {
     await signInAs(page, "admin");
     await page.goto("/admin/users/activity");
-    await expect(page.getByRole("link", { name: "Activity" })).toBeVisible({ timeout: 15_000 });
+    await expect(page.getByRole("heading", { name: "Users & Permissions" })).toBeVisible({
+      timeout: 15_000,
+    });
     await expect(page.getByRole("columnheader", { name: /name/i })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: /last login/i })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: /streak/i })).toBeVisible();
     await expect(page.getByRole("columnheader", { name: /total logins/i })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: /active days/i })).toBeVisible();
+    await expect(page.getByRole("columnheader", { name: /avg \/ active day/i })).toBeVisible();
   });
 
   test("shows users from the mock fixture", async ({ page }) => {
@@ -44,7 +48,7 @@ test.describe("User Activity page", () => {
     await page.goto("/admin/users/activity");
     await expect(page.getByText("Alice Chen")).toBeVisible({ timeout: 15_000 });
     await expect(page.getByText("Frank Lee")).toBeVisible();
-    await expect(page.getByText("Eve Johnson")).toBeVisible();
+    await expect(page.getByRole("table").getByText("Eve Johnson")).toBeVisible();
   });
 
   test("inactive users panel appears for users with no recent login", async ({ page }) => {
@@ -69,6 +73,43 @@ test.describe("User Activity page", () => {
     await page.getByPlaceholder(/search/i).fill("frank");
     await expect(page.getByText("Frank Lee")).toBeVisible();
     await expect(page.getByText("Alice Chen")).toBeHidden();
+  });
+
+  test("analytics exposes complete metrics and switches windows", async ({ page }) => {
+    await signInAs(page, "admin");
+    await page.goto("/admin/users/activity");
+    const analytics = page.getByRole("region", { name: "System-wide user engagement analytics" });
+    await expect(analytics).toBeVisible({ timeout: 15_000 });
+    await expect(analytics.getByRole("region", { name: "30-day window" })).toContainText("45");
+    await expect(analytics.getByRole("region", { name: "Current month" })).toContainText("74");
+    await expect(analytics.getByRole("region", { name: "Lifetime" })).toContainText("306");
+    await expect(analytics).toContainText("All Custos users");
+    await expect(analytics.getByRole("region", { name: "Login trend for 30 days" })).toContainText(
+      "Daily login trend",
+    );
+    await analytics.getByRole("button", { name: "7d" }).click();
+    await expect(analytics.getByRole("region", { name: "7-day window" })).toContainText("18");
+  });
+
+  test("admin can drill down into one user's engagement audit", async ({ page }) => {
+    await signInAs(page, "admin");
+    await page.goto("/admin/users/activity");
+    await page.getByRole("button", { name: "View analytics for Alice Chen" }).click();
+    await expect(page.getByText("User engagement audit")).toBeVisible();
+    const audit = page.getByRole("region", { name: "Alice Chen engagement analytics" });
+    await expect(audit).toContainText("Individual user audit");
+    await expect(audit).toContainText("Login activity for this user only");
+  });
+
+  test("custom inactivity threshold supports the backend maximum", async ({ page }) => {
+    await signInAs(page, "admin");
+    await page.goto("/admin/users/activity");
+    await page.getByRole("button", { name: "Custom" }).click();
+    const input = page.getByLabel("Custom inactivity days");
+    await expect(input).toHaveAttribute("max", "3650");
+    await input.fill("3650");
+    await input.press("Enter");
+    await expect(page.getByText("(≥ 3650d)")).toBeVisible();
   });
 
   test("clicking a column header sorts the table", async ({ page }) => {

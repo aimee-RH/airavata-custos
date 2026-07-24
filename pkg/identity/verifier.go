@@ -29,9 +29,14 @@ type JWTVerifier struct{ inner *oidc.IDTokenVerifier }
 
 // Claims are the subset the middleware needs after verification.
 type Claims struct {
+	Issuer        string `json:"iss"`
 	Sub           string `json:"sub"`
 	Email         string `json:"email"`
 	EmailVerified bool   `json:"email_verified"`
+	SessionID     string `json:"sid"`
+	AuthTime      int64  `json:"auth_time"`
+	TokenID       string `json:"jti"`
+	IssuedAt      int64  `json:"iat"`
 }
 
 // NewJWTVerifier resolves the provider's discovery doc and builds a verifier

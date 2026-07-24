@@ -17,10 +17,10 @@
 
 "use client";
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAbility } from "@/shared/casl/AbilityProvider";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const TABS = [
   { href: "/admin/users/management", label: "User Management" },
@@ -32,7 +32,7 @@ const TABS = [
   {
     href: "/admin/users/activity",
     label: "Activity",
-    ability: { action: "read", subject: "User" } as const,
+    ability: { action: "read", subject: "UserActivity" } as const,
   },
 ] as const;
 

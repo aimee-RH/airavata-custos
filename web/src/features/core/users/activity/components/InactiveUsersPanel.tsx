@@ -15,9 +15,12 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { AlertTriangle } from "lucide-react";
+"use client";
+
+import * as React from "react";
+import { AlertTriangle, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { computeDaysSince, formatLastLogin, inactivityBand } from "../lib";
+import { inactivityBand } from "../lib";
 import type { UserActivityRow } from "../schemas";
 
 const BAND_STYLES: Record<string, string> = {
@@ -32,14 +35,31 @@ const BADGE_STYLES: Record<string, string> = {
   warning:  "bg-amber-500/15 text-amber-700 dark:text-amber-400",
 };
 
+/** Number of rows shown before the "Show more" toggle appears. */
+const COLLAPSE_THRESHOLD = 5;
+
 export function InactiveUsersPanel({
   inactiveUsers,
-  now,
+  inactiveDays,
+  total = inactiveUsers.length,
+  hasMore = false,
+  isLoadingMore = false,
+  onShowMore,
 }: {
   inactiveUsers: UserActivityRow[];
-  now: Date;
+  inactiveDays: number;
+  total?: number;
+  hasMore?: boolean;
+  isLoadingMore?: boolean;
+  onShowMore?: () => void;
 }) {
-  if (inactiveUsers.length === 0) return null;
+  const [expanded, setExpanded] = React.useState(false);
+  if (total === 0) return null;
+  const localMode = onShowMore === undefined && total === inactiveUsers.length;
+  const localHasMore = localMode && inactiveUsers.length > COLLAPSE_THRESHOLD;
+  const effectiveHasMore = hasMore || localHasMore;
+  const visible = localHasMore && !expanded ? inactiveUsers.slice(0, COLLAPSE_THRESHOLD) : inactiveUsers;
+  const hiddenCount = localMode ? Math.max(0, inactiveUsers.length - COLLAPSE_THRESHOLD) : Math.max(0, total - inactiveUsers.length);
 
   return (
     <section
@@ -48,20 +68,24 @@ export function InactiveUsersPanel({
     >
       <header className="flex items-center gap-2">
         <AlertTriangle className="h-4 w-4 text-amber-500" aria-hidden />
-        <h2 className="text-sm font-semibold">Inactive Users</h2>
+        <h2 className="text-sm font-semibold">
+          Inactive Users
+          <span className="ml-1.5 font-normal text-muted-foreground text-xs">
+            (≥ {inactiveDays}d)
+          </span>
+        </h2>
         <span
-          aria-label={`${inactiveUsers.length} inactive users`}
+          aria-label={`${total} inactive users`}
           className="ml-1 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[11px] font-bold text-destructive-foreground"
         >
-          {inactiveUsers.length}
+          {total}
         </span>
       </header>
 
-      <ul className="space-y-2" role="list">
-        {inactiveUsers.map((user) => {
-          const days = computeDaysSince(user.last_login, now);
+      <ul className="space-y-2">
+        {visible.map((user) => {
+          const days = user.inactive_days;
           const band = inactivityBand(days);
-          const label = formatLastLogin(user.last_login, now);
 
           return (
             <li
@@ -88,6 +112,18 @@ export function InactiveUsersPanel({
           );
         })}
       </ul>
+
+      {effectiveHasMore && (
+        <button
+          type="button"
+          onClick={localMode ? () => setExpanded((value) => !value) : onShowMore}
+          className="flex w-full items-center justify-center gap-1.5 rounded-md py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-accent-foreground transition-colors"
+          disabled={isLoadingMore}
+        >
+          {localMode && expanded ? <ChevronUp className="h-3.5 w-3.5" aria-hidden /> : <ChevronDown className="h-3.5 w-3.5" aria-hidden />}
+          {isLoadingMore ? "Loading…" : localMode && expanded ? "Show less" : `Show ${hiddenCount} more`}
+        </button>
+      )}
     </section>
   );
 }

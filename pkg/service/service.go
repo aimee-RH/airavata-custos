@@ -38,6 +38,7 @@ type Service struct {
 	eventBus            *events.Bus
 	orgs                store.OrganizationStore
 	users               store.UserStore
+	loginActivity       store.LoginActivityStore
 	projs               store.ProjectStore
 	clusters            store.ComputeClusterStore
 	clusterUsers        store.ComputeClusterUserStore
@@ -69,6 +70,7 @@ func New(database *sqlx.DB, eventBus *events.Bus) *Service {
 		eventBus:            eventBus,
 		orgs:                store.NewOrganizationStore(database),
 		users:               store.NewUserStore(database),
+		loginActivity:       store.NewLoginActivityStore(database),
 		projs:               store.NewProjectStore(database),
 		clusters:            store.NewComputeClusterStore(database),
 		clusterUsers:        store.NewComputeClusterUserStore(database),

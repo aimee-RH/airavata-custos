@@ -19,8 +19,9 @@ package db
 
 import (
 	"fmt"
+	"time"
 
-	_ "github.com/go-sql-driver/mysql"
+	"github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -31,9 +32,29 @@ type Config struct {
 	MaxIdleConns int
 }
 
+// normalizeDSN forces all database connections to use UTC for both MySQL
+// session timestamp conversion and time.Time values scanned by the driver.
+func normalizeDSN(dsn string) (string, error) {
+	cfg, err := mysql.ParseDSN(dsn)
+	if err != nil {
+		return "", fmt.Errorf("parse database DSN: %w", err)
+	}
+	cfg.Loc = time.UTC
+	if cfg.Params == nil {
+		cfg.Params = make(map[string]string)
+	}
+	// MySQL system-variable values must be quoted; FormatDSN URL-escapes them.
+	cfg.Params["time_zone"] = "'+00:00'"
+	return cfg.FormatDSN(), nil
+}
+
 // Open opens and validates a MySQL/MariaDB connection using the supplied config.
 func Open(cfg Config) (*sqlx.DB, error) {
-	db, err := sqlx.Open("mysql", cfg.DSN)
+	dsn, err := normalizeDSN(cfg.DSN)
+	if err != nil {
+		return nil, err
+	}
+	db, err := sqlx.Open("mysql", dsn)
 	if err != nil {
 		return nil, fmt.Errorf("open database: %w", err)
 	}

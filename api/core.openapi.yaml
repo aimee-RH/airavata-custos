@@ -334,6 +334,21 @@ definitions:
       user_id:
         type: string
     type: object
+  InactiveUserListResponse:
+    properties:
+      days:
+        type: integer
+      items:
+        items:
+          $ref: '#/definitions/UserActivityRow'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
   Organization:
     properties:
       id:
@@ -364,6 +379,7 @@ definitions:
     - core:projects:write
     - core:users:read
     - core:users:write
+    - core:users:activity:read
     - core:organizations:read
     - core:organizations:write
     - core:traces:read
@@ -379,6 +395,7 @@ definitions:
     - ProjectsWrite
     - UsersRead
     - UsersWrite
+    - UsersActivityRead
     - OrganizationsRead
     - OrganizationsWrite
     - TracesRead
@@ -563,16 +580,117 @@ definitions:
         type: string
       id:
         type: string
+      last_login:
+        type: string
+      last_login_local_date:
+        type: string
       last_name:
         type: string
+      login_count:
+        type: integer
+      login_day_count:
+        type: integer
+      login_streak:
+        type: integer
       middle_name:
         type: string
       organization_id:
         type: string
       status:
         $ref: '#/definitions/UserStatus'
+      timezone:
+        type: string
       type:
         $ref: '#/definitions/UserType'
+    type: object
+  UserActivityAnalytics:
+    properties:
+      active_users:
+        type: integer
+      average_logins_per_active_day:
+        type: number
+        x-nullable: true
+      generated_at:
+        type: string
+      lifetime_active_days:
+        type: integer
+      lifetime_login_count:
+        type: integer
+      monthly_active_days:
+        type: integer
+      monthly_active_users:
+        type: integer
+      monthly_login_count:
+        type: integer
+      total_users:
+        type: integer
+      trend:
+        items:
+          $ref: '#/definitions/UserActivityTrendPoint'
+        type: array
+      users_ever_logged_in:
+        type: integer
+      window_active_days:
+        type: integer
+      window_days:
+        type: integer
+      window_login_count:
+        type: integer
+    type: object
+  UserActivityListResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/UserActivityRow'
+        type: array
+      limit:
+        type: integer
+      offset:
+        type: integer
+      total:
+        type: integer
+    type: object
+  UserActivityRow:
+    properties:
+      average_logins_per_active_day:
+        type: number
+        x-nullable: true
+      consecutive_logins:
+        description: Deprecated Phase 1 compatibility alias.
+        type: integer
+      current_streak:
+        type: integer
+      effective_timezone:
+        type: string
+      email:
+        type: string
+      last_login:
+        type: string
+        x-nullable: true
+      last_login_local_date:
+        type: string
+        x-nullable: true
+      inactive_days:
+        description: User-local calendar days since the last login; null for never-logged-in users.
+        type: integer
+        x-nullable: true
+      login_count:
+        type: integer
+      login_day_count:
+        type: integer
+      name:
+        type: string
+      user_id:
+        type: string
+    type: object
+  UserActivityTrendPoint:
+    properties:
+      active_users:
+        type: integer
+      date:
+        type: string
+      login_count:
+        type: integer
     type: object
   UserAllocationSUTotalResponse:
     properties:
@@ -2804,6 +2922,7 @@ paths:
         - core:projects:write
         - core:users:read
         - core:users:write
+        - core:users:activity:read
         - core:organizations:read
         - core:organizations:write
         - core:traces:read
@@ -3311,6 +3430,7 @@ paths:
         - core:projects:write
         - core:users:read
         - core:users:write
+        - core:users:activity:read
         - core:organizations:read
         - core:organizations:write
         - core:traces:read
@@ -3907,6 +4027,7 @@ paths:
         - core:projects:write
         - core:users:read
         - core:users:write
+        - core:users:activity:read
         - core:organizations:read
         - core:organizations:write
         - core:traces:read
@@ -4159,6 +4280,149 @@ paths:
       summary: List a user's identities
       tags:
       - User Identities
+  /users/activity:
+    get:
+      description: Returns complete login activity summaries with server-side search,
+        ordering, and pagination.
+      parameters:
+      - description: Case-insensitive name or email search
+        in: query
+        name: query
+        type: string
+      - description: Page size (default 50, max 200)
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset
+        in: query
+        name: offset
+        type: integer
+      - description: 'Sort field: name, last_login, login_count, login_day_count,
+          or current_streak'
+        in: query
+        name: sort
+        type: string
+      - description: 'Sort direction: asc or desc'
+        in: query
+        name: direction
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserActivityListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List user activity (paginated)
+      tags:
+      - Users
+  /users/activity/analytics:
+    get:
+      description: Returns lifetime, current-month, and rolling-window login metrics
+        plus a daily trend. Rolling and monthly boundaries use each daily fact's recorded
+        user-local IANA timezone.
+      parameters:
+      - description: 'Rolling window in days: 7, 30, or 90 (default 30)'
+        in: query
+        name: window
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserActivityAnalytics'
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: Get user activity analytics
+      tags:
+      - Users
+  /users/{id}/activity/analytics:
+    get:
+      description: Returns login engagement metrics restricted to the explicitly selected user.
+      parameters:
+      - description: User ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Rolling window in days: 7, 30, or 90 (default 30)'
+        in: query
+        name: window
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/UserActivityAnalytics'
+        "400":
+          description: Bad Request
+        "404":
+          description: Not Found
+      security:
+      - BearerAuth: []
+      summary: Get analytics for one selected user
+      tags:
+      - Users
+  /users/inactive:
+    get:
+      description: Returns users inactive for at least the requested number of user-local
+        calendar days. Never-logged-in users are included first.
+      parameters:
+      - description: Minimum inactive calendar days (default 7, max 3650)
+        in: query
+        name: days
+        type: integer
+      - description: Case-insensitive name or email search
+        in: query
+        name: query
+        type: string
+      - description: Page size (default 50, max 200)
+        in: query
+        name: limit
+        type: integer
+      - description: Page offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/InactiveUserListResponse'
+        "400":
+          description: Bad Request
+          schema:
+            properties:
+              error:
+                type: string
+            type: object
+      security:
+      - BearerAuth: []
+      summary: List inactive users (paginated)
+      tags:
+      - Users
   /users/merge:
     post:
       consumes:

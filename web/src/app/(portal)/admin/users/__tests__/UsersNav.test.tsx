@@ -41,6 +41,7 @@ describe("UsersNav", () => {
     render(<UsersNav />);
     expect(screen.getByRole("link", { name: "User Management" })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: "Role Management" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Activity" })).toBeNull();
   });
 
   it("shows Role Management with roles:manage", () => {
@@ -48,5 +49,11 @@ describe("UsersNav", () => {
     render(<UsersNav />);
     expect(screen.getByRole("link", { name: "User Management" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Role Management" })).toBeInTheDocument();
+  });
+
+  it("shows Activity only with users:activity:read", () => {
+    currentPrivileges = ["core:users:read", "core:users:activity:read"];
+    render(<UsersNav />);
+    expect(screen.getByRole("link", { name: "Activity" })).toBeInTheDocument();
   });
 });

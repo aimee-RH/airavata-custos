@@ -71,6 +71,10 @@ func (s *Server) routes() {
 
 	s.router.RequirePrivilege("POST /users", models.UsersWrite, s.createUser)
 	s.router.RequirePrivilege("GET /users", models.UsersRead, s.listUsers)
+	s.router.RequirePrivilege("GET /users/activity", models.UsersActivityRead, s.listUserActivity)
+	s.router.RequirePrivilege("GET /users/activity/analytics", models.UsersActivityRead, s.getUserActivityAnalytics)
+	s.router.RequirePrivilege("GET /users/{id}/activity/analytics", models.UsersActivityRead, s.getSelectedUserActivityAnalytics)
+	s.router.RequirePrivilege("GET /users/inactive", models.UsersActivityRead, s.listInactiveUsers)
 	s.router.RequirePrivilege("GET /users/{id}", models.UsersRead, s.getUser)
 	s.router.RequirePrivilege("PUT /users/{id}", models.UsersWrite, s.updateUser)
 	s.router.RequirePrivilege("PUT /users/{id}/status", models.UsersWrite, s.updateUserStatus)
@@ -168,6 +172,7 @@ func (s *Server) routes() {
 	// Any authenticated caller may read their own profile and effective privilege set with no privilege check.
 	s.router.RequireAuth("GET /user/privileges", s.getCallerPrivileges)
 	s.router.RequireAuth("GET /me", s.getCallerProfile)
+	s.router.RequireAuth("POST /me/login-events", s.recordLoginEvent)
 	s.router.RequirePrivilege("GET /privileges/catalog", models.PrivilegesGrant, s.getPrivilegeCatalog)
 	s.router.RequirePrivilege("GET /users/{id}/privileges", models.PrivilegesGrant, s.listUserPrivileges)
 	s.router.RequirePrivilege("GET /privileges/{key}/holders", models.PrivilegesGrant, s.listPrivilegeHolders)

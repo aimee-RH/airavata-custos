@@ -19,10 +19,7 @@ import NextAuth, { type NextAuthConfig } from "next-auth";
 import Keycloak from "next-auth/providers/keycloak";
 import { serverEnv } from "@/lib/env";
 import type { Privilege } from "@/features/core/identity/types";
-
-function looksLikeJwt(token: string | null | undefined): boolean {
-  return typeof token === "string" && token.split(".").length === 3;
-}
+import { captureInitialOIDCLogin, loginCaptureBearer } from "@/shared/auth/login-capture";
 
 const isProduction = serverEnv.NODE_ENV === "production";
 const sessionCookieName = isProduction
@@ -64,9 +61,7 @@ export const authConfig: NextAuthConfig = {
         (token as { accessToken?: string }).accessToken = account.access_token;
         // Some IdPs hand out opaque access tokens; use the JWT-shaped
         // bearer for the backend call so the verifier accepts it.
-        const bearer = looksLikeJwt(account.access_token)
-          ? account.access_token
-          : (account.id_token ?? account.access_token);
+        const bearer = loginCaptureBearer(account) ?? account.access_token;
         try {
           const res = await fetch(`${serverEnv.CUSTOS_CORE_API_BASE_URL}/me`, {
             headers: { authorization: `Bearer ${bearer}` },
@@ -81,8 +76,15 @@ export const authConfig: NextAuthConfig = {
             t.custosUserId = body.user?.id;
             t.privileges = body.privileges ?? [];
           }
-        } catch {
-          // Leave token as-is; /no-access handles the empty case.
+        } catch (error) {
+          console.error("OIDC profile enrichment failed", error);
+        }
+        const recorded = await captureInitialOIDCLogin({
+          account,
+          coreApiBaseUrl: serverEnv.CUSTOS_CORE_API_BASE_URL,
+        });
+        if (!recorded) {
+          console.error("OIDC login activity capture failed");
         }
       }
       if (account?.id_token) {

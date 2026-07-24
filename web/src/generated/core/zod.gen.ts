@@ -205,6 +205,7 @@ export const zPrivilegeKey = z.enum([
     'core:projects:write',
     'core:users:read',
     'core:users:write',
+    'core:users:activity:read',
     'core:organizations:read',
     'core:organizations:write',
     'core:traces:read',
@@ -336,6 +337,69 @@ export const zTraceSummary = z.object({
 
 export type traceSummaryZodType = z.infer<typeof zTraceSummary>;
 
+export const zUserActivityRow = z.object({
+    average_logins_per_active_day: z.number().nullish(),
+    consecutive_logins: z.int().optional(),
+    current_streak: z.int().optional(),
+    effective_timezone: z.string().optional(),
+    email: z.string().optional(),
+    last_login: z.string().nullish(),
+    last_login_local_date: z.string().nullish(),
+    inactive_days: z.int().nullish(),
+    login_count: z.int().optional(),
+    login_day_count: z.int().optional(),
+    name: z.string().optional(),
+    user_id: z.string().optional()
+});
+
+export type userActivityRowZodType = z.infer<typeof zUserActivityRow>;
+
+export const zInactiveUserListResponse = z.object({
+    days: z.int().optional(),
+    items: z.array(zUserActivityRow).optional(),
+    limit: z.int().optional(),
+    offset: z.int().optional(),
+    total: z.int().optional()
+});
+
+export type inactiveUserListResponseZodType = z.infer<typeof zInactiveUserListResponse>;
+
+export const zUserActivityListResponse = z.object({
+    items: z.array(zUserActivityRow).optional(),
+    limit: z.int().optional(),
+    offset: z.int().optional(),
+    total: z.int().optional()
+});
+
+export type userActivityListResponseZodType = z.infer<typeof zUserActivityListResponse>;
+
+export const zUserActivityTrendPoint = z.object({
+    active_users: z.int().optional(),
+    date: z.string().optional(),
+    login_count: z.int().optional()
+});
+
+export type userActivityTrendPointZodType = z.infer<typeof zUserActivityTrendPoint>;
+
+export const zUserActivityAnalytics = z.object({
+    active_users: z.int().optional(),
+    average_logins_per_active_day: z.number().nullish(),
+    generated_at: z.string().optional(),
+    lifetime_active_days: z.int().optional(),
+    lifetime_login_count: z.int().optional(),
+    monthly_active_days: z.int().optional(),
+    monthly_active_users: z.int().optional(),
+    monthly_login_count: z.int().optional(),
+    total_users: z.int().optional(),
+    trend: z.array(zUserActivityTrendPoint).optional(),
+    users_ever_logged_in: z.int().optional(),
+    window_active_days: z.int().optional(),
+    window_days: z.int().optional(),
+    window_login_count: z.int().optional()
+});
+
+export type userActivityAnalyticsZodType = z.infer<typeof zUserActivityAnalytics>;
+
 export const zUserAllocationSuTotalResponse = z.object({
     compute_allocation_id: z.string().optional(),
     total_su_amount: z.int().optional(),
@@ -400,10 +464,16 @@ export const zUser = z.object({
     email: z.string().optional(),
     first_name: z.string().optional(),
     id: z.string().optional(),
+    last_login: z.string().optional(),
+    last_login_local_date: z.string().optional(),
     last_name: z.string().optional(),
+    login_count: z.int().optional(),
+    login_day_count: z.int().optional(),
+    login_streak: z.int().optional(),
     middle_name: z.string().optional(),
     organization_id: z.string().optional(),
     status: zUserStatus.optional(),
+    timezone: z.string().optional(),
     type: zUserType.optional()
 });
 
@@ -1126,6 +1196,7 @@ export const zGetPrivilegesByKeyHoldersPath = z.object({
         'core:projects:write',
         'core:users:read',
         'core:users:write',
+        'core:users:activity:read',
         'core:organizations:read',
         'core:organizations:write',
         'core:traces:read',
@@ -1275,6 +1346,7 @@ export const zDeleteRolesByIdPrivilegesByKeyPath = z.object({
         'core:projects:write',
         'core:users:read',
         'core:users:write',
+        'core:users:activity:read',
         'core:organizations:read',
         'core:organizations:write',
         'core:traces:read',
@@ -1464,6 +1536,7 @@ export const zDeleteUsersByIdPrivilegesByKeyPath = z.object({
         'core:projects:write',
         'core:users:read',
         'core:users:write',
+        'core:users:activity:read',
         'core:organizations:read',
         'core:organizations:write',
         'core:traces:read',
@@ -1529,6 +1602,53 @@ export const zGetUsersByIdUserIdentitiesPath = z.object({
  * OK
  */
 export const zGetUsersByIdUserIdentitiesResponse = z.array(zUserIdentity);
+
+export const zGetUsersActivityQuery = z.object({
+    query: z.string().optional(),
+    limit: z.int().optional(),
+    offset: z.int().optional(),
+    sort: z.string().optional(),
+    direction: z.string().optional()
+});
+
+/**
+ * OK
+ */
+export const zGetUsersActivityResponse = zUserActivityListResponse;
+
+export const zGetUsersActivityAnalyticsQuery = z.object({
+    window: z.int().optional()
+});
+
+/**
+ * OK
+ */
+export const zGetUsersActivityAnalyticsResponse = zUserActivityAnalytics;
+
+export const zGetUsersByIdActivityAnalyticsPath = z.object({
+    id: z.string()
+});
+
+export const zGetUsersByIdActivityAnalyticsQuery = z.object({
+    window: z.int().optional()
+});
+
+/**
+ * OK
+ */
+export const zGetUsersByIdActivityAnalyticsResponse = zUserActivityAnalytics;
+
+export const zGetUsersInactiveQuery = z.object({
+    days: z.int().optional(),
+    query: z.string().optional(),
+    limit: z.int().optional(),
+    offset: z.int().optional()
+});
+
+/**
+ * OK
+ */
+export const zGetUsersInactiveResponse = zInactiveUserListResponse;
 
 /**
  * Merge payload

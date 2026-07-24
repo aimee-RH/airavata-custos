@@ -65,12 +65,18 @@ const (
 )
 
 type User struct {
-	ID             string     `json:"id"              db:"id"`
-	OrganizationID string     `json:"organization_id" db:"organization_id"`
-	FirstName      string     `json:"first_name"      db:"first_name"`
-	LastName       string     `json:"last_name"       db:"last_name"`
-	MiddleName     string     `json:"middle_name,omitempty" db:"middle_name"`
-	Email          string     `json:"email"           db:"email"`
-	Status         UserStatus `json:"status"          db:"status"`
-	Type           UserType   `json:"type"            db:"type"`
+	ID                 string     `json:"id"                            db:"id"`
+	OrganizationID     string     `json:"organization_id"               db:"organization_id"`
+	FirstName          string     `json:"first_name"                    db:"first_name"`
+	LastName           string     `json:"last_name"                     db:"last_name"`
+	MiddleName         string     `json:"middle_name,omitempty"         db:"middle_name"`
+	Email              string     `json:"email"                         db:"email"`
+	Status             UserStatus `json:"status"                        db:"status"`
+	Type               UserType   `json:"type"                          db:"type"`
+	Timezone           *string    `json:"timezone,omitempty"            db:"timezone"`
+	LastLogin          *time.Time `json:"last_login,omitempty"          db:"last_login"`
+	LastLoginLocalDate *string    `json:"last_login_local_date,omitempty" db:"last_login_local_date"`
+	LoginCount         uint64     `json:"login_count"                   db:"login_count"`
+	LoginDayCount      uint64     `json:"login_day_count"               db:"login_day_count"`
+	LoginStreak        uint64     `json:"login_streak"                  db:"login_streak"`
 }
