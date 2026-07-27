@@ -286,8 +286,8 @@ func (s *Service) ListUserActivity(ctx context.Context, f store.UserActivityFilt
 
 // GetUserActivityAnalytics validates the rolling window and returns daily-fact analytics.
 func (s *Service) GetUserActivityAnalytics(ctx context.Context, windowDays int) (*store.UserActivityAnalytics, error) {
-	if windowDays != 7 && windowDays != 30 && windowDays != 90 {
-		return nil, fmt.Errorf("%w: window must be 7, 30, or 90 days", ErrInvalidInput)
+	if err := validateAnalyticsWindow(windowDays); err != nil {
+		return nil, err
 	}
 	result, err := s.users.GetActivityAnalytics(ctx, nowUTC(), windowDays)
 	if err != nil {
@@ -302,8 +302,8 @@ func (s *Service) GetSelectedUserActivityAnalytics(ctx context.Context, userID s
 	if userID == "" {
 		return nil, fmt.Errorf("%w: user id is required", ErrInvalidInput)
 	}
-	if windowDays != 7 && windowDays != 30 && windowDays != 90 {
-		return nil, fmt.Errorf("%w: window must be 7, 30, or 90 days", ErrInvalidInput)
+	if err := validateAnalyticsWindow(windowDays); err != nil {
+		return nil, err
 	}
 	user, err := s.users.FindByID(ctx, userID)
 	if err != nil {
@@ -317,6 +317,13 @@ func (s *Service) GetSelectedUserActivityAnalytics(ctx context.Context, userID s
 		return nil, fmt.Errorf("get selected user activity analytics: %w", err)
 	}
 	return result, nil
+}
+
+func validateAnalyticsWindow(windowDays int) error {
+	if windowDays < 1 || windowDays > 365 {
+		return fmt.Errorf("%w: window must be between 1 and 365 days", ErrInvalidInput)
+	}
+	return nil
 }
 
 // DeleteUser removes a user by ID.

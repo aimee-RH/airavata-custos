@@ -18,7 +18,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ActivityAnalytics, analyticsCSV } from "../components/ActivityAnalytics";
-import { InactivityFilter } from "../components/InactivityFilter";
 import type { UserActivityAnalytics } from "../schemas";
 
 const analytics: UserActivityAnalytics = {
@@ -43,8 +42,8 @@ describe("ActivityAnalytics", () => {
     render(<ActivityAnalytics data={analytics} windowDays={30} onWindowChange={() => undefined} />);
     expect(
       screen.getByRole("region", { name: "System-wide user engagement analytics" }),
-    ).toHaveTextContent("All Custos users");
-    expect(screen.getByText(/Aggregated usage across every user/i)).toBeInTheDocument();
+    ).toHaveTextContent("OIDC users");
+    expect(screen.getByText(/users with an OIDC identity/i)).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "30-day window" })).toHaveTextContent("50");
     expect(screen.getByRole("region", { name: "Current month" })).toHaveTextContent("70");
     expect(screen.getByRole("region", { name: "Lifetime" })).toHaveTextContent("500");
@@ -55,8 +54,31 @@ describe("ActivityAnalytics", () => {
     render(<ActivityAnalytics data={analytics} windowDays={30} onWindowChange={() => undefined} />);
     const trend = screen.getByRole("region", { name: "Login trend for 30 days" });
     expect(trend).toHaveTextContent("Daily login trend");
+    expect(trend).toHaveTextContent("06-25");
     expect(trend).toHaveTextContent("07-24");
-    expect(trend.querySelector("[title*='8 logins']")).toBeInTheDocument();
+    expect(trend).toHaveTextContent("Login sessions");
+    expect(trend).toHaveTextContent("Active users");
+    expect(screen.getByLabelText("8 login sessions")).toHaveTextContent("8");
+    expect(screen.getByLabelText("4 active users")).toHaveTextContent("4");
+    expect(screen.getByText("Jul 24, 2026")).toBeInTheDocument();
+    expect(trend.querySelector("[title]")).not.toBeInTheDocument();
+    expect(trend.querySelectorAll("[data-login-tooltip]")).toHaveLength(30);
+    expect(screen.getByLabelText("8 login sessions").parentElement).not.toHaveAttribute("tabindex");
+    expect(trend.querySelector("[data-login-tooltip]")).not.toHaveClass("group-focus:block");
+    const zeroBar = trend.querySelector("[aria-label='0 login sessions']");
+    expect(zeroBar).toHaveStyle({ height: "0%" });
+  });
+
+  it("accepts a custom analytics window", () => {
+    const onWindowChange = vi.fn();
+    render(
+      <ActivityAnalytics data={analytics} windowDays={30} onWindowChange={onWindowChange} />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
+    const input = screen.getByLabelText("Custom analytics days");
+    fireEvent.change(input, { target: { value: "14" } });
+    fireEvent.blur(input);
+    expect(onWindowChange).toHaveBeenCalledWith(14);
   });
 
   it("labels a selected-user report as an individual audit", () => {
@@ -80,25 +102,5 @@ describe("ActivityAnalytics", () => {
     expect(csv).toContain("window_active_days,50");
     expect(csv).toContain("date,active_users,login_count");
     expect(csv).toContain("2026-07-24,4,8");
-  });
-});
-
-describe("InactivityFilter", () => {
-  it("accepts 3650 and rejects values outside the backend range", () => {
-    const onChange = vi.fn();
-    render(<InactivityFilter value={7} onChange={onChange} />);
-    fireEvent.click(screen.getByRole("button", { name: "Custom" }));
-    const input = screen.getByLabelText("Custom inactivity days");
-    expect(input).toHaveAttribute("max", "3650");
-
-    fireEvent.change(input, { target: { value: "3650" } });
-    fireEvent.blur(input);
-    expect(onChange).toHaveBeenCalledWith(3650);
-
-    onChange.mockClear();
-    fireEvent.change(input, { target: { value: "3651" } });
-    fireEvent.blur(input);
-    expect(onChange).not.toHaveBeenCalled();
-    expect(input).toHaveValue(7);
   });
 });

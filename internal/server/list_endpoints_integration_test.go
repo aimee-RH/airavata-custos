@@ -143,7 +143,9 @@ func TestUserActivityAnalyticsAuthorizationAndValidation(t *testing.T) {
 	}{
 		{path: "/users/activity/analytics", privileges: []models.PrivilegeKey{models.UsersRead}, want: http.StatusForbidden},
 		{path: "/users/activity/analytics?window=30", privileges: []models.PrivilegeKey{models.UsersActivityRead}, want: http.StatusOK},
-		{path: "/users/activity/analytics?window=14", privileges: []models.PrivilegeKey{models.UsersActivityRead}, want: http.StatusBadRequest},
+		{path: "/users/activity/analytics?window=14", privileges: []models.PrivilegeKey{models.UsersActivityRead}, want: http.StatusOK},
+		{path: "/users/activity/analytics?window=0", privileges: []models.PrivilegeKey{models.UsersActivityRead}, want: http.StatusBadRequest},
+		{path: "/users/activity/analytics?window=366", privileges: []models.PrivilegeKey{models.UsersActivityRead}, want: http.StatusBadRequest},
 		{path: "/users/activity/analytics?window=nope", privileges: []models.PrivilegeKey{models.UsersActivityRead}, want: http.StatusBadRequest},
 	} {
 		rr := httptest.NewRecorder()
@@ -185,7 +187,7 @@ func TestListInactiveUsersAuthorizationValidationAndDefaults(t *testing.T) {
 		})
 	}
 
-	for _, path := range []string{"/users/inactive?days=0", "/users/inactive?days=3651", "/users/inactive?days=nope"} {
+	for _, path := range []string{"/users/inactive?days=0", "/users/inactive?days=3651", "/users/inactive?days=nope", "/users/inactive?never=nope"} {
 		rr := httptest.NewRecorder()
 		req := withTestCaller(httptest.NewRequest(http.MethodGet, path, nil), "admin", models.UsersActivityRead)
 		srv.ServeHTTP(rr, req)

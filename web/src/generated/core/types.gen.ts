@@ -4255,7 +4255,7 @@ export type GetUsersActivityAnalyticsData = {
     path?: never;
     query?: {
         /**
-         * Rolling window in days: 7, 30, or 90 (default 30)
+         * Rolling window in days (default 30, max 365)
          */
         window?: number;
     };
@@ -4292,7 +4292,7 @@ export type GetUsersByIdActivityAnalyticsData = {
     };
     query?: {
         /**
-         * Rolling window in days: 7, 30, or 90 (default 30)
+         * Rolling window in days (default 30, max 365)
          */
         window?: number;
     };
@@ -4327,6 +4327,10 @@ export type GetUsersInactiveData = {
          * Minimum inactive calendar days (default 7, max 3650)
          */
         days?: number;
+        /**
+         * Only users who have never logged in
+         */
+        never?: boolean;
         /**
          * Case-insensitive name or email search
          */

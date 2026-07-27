@@ -17,10 +17,13 @@
 "use client";
 
 import { Button } from "@/shared/ui/button";
+import { Input } from "@/shared/ui/input";
 import { Download } from "lucide-react";
+import * as React from "react";
 import type { UserActivityAnalytics } from "../schemas";
 
-type WindowDays = 7 | 30 | 90;
+const ANALYTICS_WINDOW_MAX_DAYS = 365;
+const ANALYTICS_WINDOW_PRESETS = [7, 30, 90] as const;
 
 function escapeCSV(value: string | number | null): string {
   const text = value === null ? "" : String(value);
@@ -80,27 +83,41 @@ function Metric({ label, value }: { label: string; value: number | null }) {
   );
 }
 
-function LoginTrend({ data, windowDays }: { data: UserActivityAnalytics; windowDays: WindowDays }) {
-  const maxLogins = Math.max(1, ...data.trend.map((point) => point.login_count));
-  const labelEvery = Math.max(1, Math.ceil(data.trend.length / 7));
+function fillTrendWindow(data: UserActivityAnalytics, windowDays: number) {
+  const end = new Date(data.generated_at);
+  if (Number.isNaN(end.getTime())) return data.trend;
+
+  const points = new Map(data.trend.map((point) => [point.date, point]));
+  return Array.from({ length: windowDays }, (_, index) => {
+    const date = new Date(end);
+    date.setUTCDate(end.getUTCDate() - (windowDays - index - 1));
+    const key = date.toISOString().slice(0, 10);
+    return points.get(key) ?? { date: key, active_users: 0, login_count: 0 };
+  });
+}
+
+function LoginTrend({ data, windowDays }: { data: UserActivityAnalytics; windowDays: number }) {
+  const trend = fillTrendWindow(data, windowDays);
+  const maxValue = Math.max(
+    1,
+    ...trend.flatMap((point) => [point.login_count, point.active_users]),
+  );
+  const labelEvery = Math.max(1, Math.ceil(trend.length / 7));
   return (
     <section
-      className="rounded-lg border bg-card p-4"
+      className="rounded-lg border border-border bg-card p-4"
       aria-label={`Login trend for ${windowDays} days`}
     >
-      <div className="mb-4 flex flex-wrap items-start justify-between gap-2">
+      <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
         <div>
           <h3 className="text-sm font-semibold">Daily login trend</h3>
           <p className="text-xs text-muted-foreground">
-            Login sessions by user-local calendar date
+            Last {windowDays} days · user-local calendar dates
           </p>
         </div>
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="inline-flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-sm bg-primary" />
-            Logins
-          </span>
-          <span>Hover a bar for active-user count</span>
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+          <ChartLegend color="var(--chart-1)" label="Login sessions" />
+          <ChartLegend color="var(--chart-2)" label="Active users" />
         </div>
       </div>
       {data.trend.length === 0 ? (
@@ -109,34 +126,112 @@ function LoginTrend({ data, windowDays }: { data: UserActivityAnalytics; windowD
         </div>
       ) : (
         <div className="overflow-x-auto">
-          <div className="min-w-[560px]">
-            <div className="relative flex h-40 items-end gap-1 border-b border-l pl-2" role="img">
-              <span className="absolute -left-1 top-0 -translate-x-full text-[10px] text-muted-foreground">
-                {maxLogins}
-              </span>
-              <span className="absolute -left-1 bottom-0 -translate-x-full text-[10px] text-muted-foreground">
-                0
-              </span>
-              {data.trend.map((point) => (
-                <div
-                  key={point.date}
-                  className="group relative flex h-full min-w-2 flex-1 items-end"
-                >
-                  <div
-                    className="w-full rounded-t bg-primary transition-colors hover:bg-primary/80"
-                    style={{ height: `${Math.max(3, (point.login_count / maxLogins) * 100)}%` }}
-                    title={`${point.date}: ${point.login_count} logins, ${point.active_users} active users`}
-                  />
+          <div style={{ minWidth: `${Math.max(560, windowDays * 20)}px` }}>
+            <div className="grid grid-cols-[24px_1fr] gap-2">
+              <div className="flex h-48 flex-col justify-between pt-4 text-right text-[10px] tabular-nums text-muted-foreground">
+                <span>{maxValue}</span>
+                <span>{Math.round(maxValue / 2)}</span>
+                <span>0</span>
+              </div>
+              <div
+                className="relative h-48"
+                role="img"
+                aria-label="Daily login sessions and active users"
+              >
+                <div className="absolute inset-x-0 bottom-0 flex h-44 items-end gap-[3px] border-b border-border">
+                  {trend.map((point, index) => {
+                    const loginHeight =
+                      point.login_count === 0
+                        ? 0
+                        : Math.max(3, (point.login_count / maxValue) * 100);
+                    const userHeight =
+                      point.active_users === 0
+                        ? 0
+                        : Math.max(3, (point.active_users / maxValue) * 100);
+                    return (
+                      <div
+                        key={point.date}
+                        className="group relative flex h-full min-w-2 flex-1 items-end gap-px group-hover:z-30"
+                      >
+                        <div
+                          className="relative h-0 flex-1 rounded-t-[3px]"
+                          style={{ height: `${loginHeight}%`, background: "var(--chart-1)" }}
+                          data-series="logins"
+                          aria-label={`${point.login_count} login sessions`}
+                        >
+                          {point.login_count > 0 && (
+                            <span
+                              className="absolute inset-x-0 -top-4 text-center text-[10px] font-semibold leading-none tabular-nums"
+                              style={{ color: "var(--chart-1)" }}
+                              data-value-label
+                            >
+                              {point.login_count}
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className="relative h-0 flex-1 rounded-t-[3px]"
+                          style={{ height: `${userHeight}%`, background: "var(--chart-2)" }}
+                          data-series="active-users"
+                          aria-label={`${point.active_users} active users`}
+                        >
+                          {point.active_users > 0 && (
+                            <span
+                              className="absolute inset-x-0 -top-4 text-center text-[10px] font-semibold leading-none tabular-nums"
+                              style={{ color: "var(--chart-2)" }}
+                              data-value-label
+                            >
+                              {point.active_users}
+                            </span>
+                          )}
+                        </div>
+                        <div
+                          className={`pointer-events-none absolute top-2 z-40 hidden w-48 rounded-md border border-border bg-popover p-2 text-xs shadow-md group-hover:block ${
+                            index < 4
+                              ? "left-0"
+                              : index >= trend.length - 4
+                                ? "right-0"
+                                : "left-1/2 -translate-x-1/2"
+                          }`}
+                          data-login-tooltip
+                        >
+                          <p className="mb-1.5 text-sm font-medium">{formatTrendDate(point.date)}</p>
+                          <p className="flex items-center justify-between gap-3">
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className="h-2 w-2 rounded-sm"
+                                style={{ background: "var(--chart-1)" }}
+                                aria-hidden
+                              />
+                              Login sessions
+                            </span>
+                            <span className="font-medium tabular-nums">{point.login_count}</span>
+                          </p>
+                          <p className="mt-0.5 flex items-center justify-between gap-3">
+                            <span className="flex items-center gap-1.5">
+                              <span
+                                className="h-2 w-2 rounded-sm"
+                                style={{ background: "var(--chart-2)" }}
+                                aria-hidden
+                              />
+                              Active users
+                            </span>
+                            <span className="font-medium tabular-nums">{point.active_users}</span>
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
+              </div>
             </div>
-            <div className="flex gap-1 pl-2">
-              {data.trend.map((point, index) => (
+            <div className="ml-8 flex gap-[3px]">
+              {trend.map((point, index) => (
                 <div
                   key={point.date}
                   className="min-w-2 flex-1 pt-1 text-center text-[10px] text-muted-foreground"
                 >
-                  {index % labelEvery === 0 || index === data.trend.length - 1
+                  {index % labelEvery === 0 || index === trend.length - 1
                     ? point.date.slice(5)
                     : ""}
                 </div>
@@ -149,6 +244,101 @@ function LoginTrend({ data, windowDays }: { data: UserActivityAnalytics; windowD
   );
 }
 
+function formatTrendDate(date: string) {
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  }).format(new Date(`${date}T00:00:00Z`));
+}
+
+function ChartLegend({ color, label }: { color: string; label: string }) {
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <span className="h-2.5 w-2.5 rounded-sm" style={{ background: color }} aria-hidden />
+      {label}
+    </span>
+  );
+}
+
+function AnalyticsWindowFilter({
+  value,
+  onChange,
+}: {
+  value: number;
+  onChange: (days: number) => void;
+}) {
+  const [custom, setCustom] = React.useState(
+    () => !ANALYTICS_WINDOW_PRESETS.some((days) => days === value),
+  );
+  const [draft, setDraft] = React.useState(String(value));
+  const inputRef = React.useRef<HTMLInputElement>(null);
+
+  function commit(raw: string) {
+    const days = Number(raw);
+    if (Number.isInteger(days) && days >= 1 && days <= ANALYTICS_WINDOW_MAX_DAYS) {
+      onChange(days);
+    } else {
+      setDraft(String(value));
+    }
+  }
+
+  return (
+    <fieldset className="flex flex-wrap items-center gap-2" aria-label="Analytics date range">
+      {ANALYTICS_WINDOW_PRESETS.map((days) => (
+        <Button
+          key={days}
+          type="button"
+          size="sm"
+          variant={!custom && days === value ? "default" : "outline"}
+          onClick={() => {
+            setCustom(false);
+            onChange(days);
+          }}
+        >
+          {days}d
+        </Button>
+      ))}
+      <Button
+        type="button"
+        size="sm"
+        variant={custom ? "default" : "outline"}
+        aria-pressed={custom}
+        onClick={() => {
+          setCustom(true);
+          setDraft(String(value));
+          requestAnimationFrame(() => inputRef.current?.focus());
+        }}
+      >
+        Custom
+      </Button>
+      {custom && (
+        <div className="flex items-center gap-1">
+          <Input
+            ref={inputRef}
+            type="number"
+            min={1}
+            max={ANALYTICS_WINDOW_MAX_DAYS}
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            onBlur={(event) => commit(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                commit((event.target as HTMLInputElement).value);
+                (event.target as HTMLInputElement).blur();
+              }
+            }}
+            className="h-9 w-20"
+            aria-label="Custom analytics days"
+          />
+          <span className="text-xs text-muted-foreground">days</span>
+        </div>
+      )}
+    </fieldset>
+  );
+}
+
 export function ActivityAnalytics({
   data,
   windowDays,
@@ -157,8 +347,8 @@ export function ActivityAnalytics({
   compact = false,
 }: {
   data: UserActivityAnalytics;
-  windowDays: WindowDays;
-  onWindowChange: (days: WindowDays) => void;
+  windowDays: number;
+  onWindowChange: (days: number) => void;
   subjectName?: string;
   compact?: boolean;
 }) {
@@ -166,6 +356,7 @@ export function ActivityAnalytics({
   const metricGroups = [
     {
       title: `${data.window_days}-day window`,
+      accent: "var(--chart-1)",
       metrics: [
         [
           isSystemWide ? "Active users" : "Was active",
@@ -178,6 +369,7 @@ export function ActivityAnalytics({
     },
     {
       title: "Current month",
+      accent: "var(--chart-2)",
       metrics: [
         [
           isSystemWide ? "Active users" : "Was active",
@@ -189,6 +381,7 @@ export function ActivityAnalytics({
     },
     {
       title: "Lifetime",
+      accent: "var(--chart-3)",
       metrics: isSystemWide
         ? [
             ["Total users", data.total_users],
@@ -201,7 +394,7 @@ export function ActivityAnalytics({
             ["Active days", data.lifetime_active_days],
           ],
     },
-  ] as Array<{ title: string; metrics: Array<[string, number | null]> }>;
+  ] as Array<{ title: string; accent: string; metrics: Array<[string, number | null]> }>;
 
   return (
     <section
@@ -215,29 +408,19 @@ export function ActivityAnalytics({
       <header className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="mb-1 inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-            {isSystemWide ? "All Custos users" : "Individual user audit"}
+            {isSystemWide ? "OIDC users" : "Individual user audit"}
           </div>
           <h2 className={compact ? "text-base font-semibold" : "text-lg font-semibold"}>
             {isSystemWide ? "System-wide engagement" : `${subjectName} engagement`}
           </h2>
           <p className="text-sm text-muted-foreground">
             {isSystemWide
-              ? "Aggregated usage across every user in this Custos deployment—not the signed-in admin."
+              ? "Aggregated login activity across users with an OIDC identity."
               : "Login activity for this user only."}
           </p>
         </div>
-        <div className="flex gap-2">
-          {([7, 30, 90] as const).map((days) => (
-            <Button
-              key={days}
-              type="button"
-              size="sm"
-              variant={days === windowDays ? "default" : "outline"}
-              onClick={() => onWindowChange(days)}
-            >
-              {days}d
-            </Button>
-          ))}
+        <div className="flex flex-wrap items-center gap-2">
+          <AnalyticsWindowFilter value={windowDays} onChange={onWindowChange} />
           <Button
             type="button"
             size="sm"
@@ -254,7 +437,8 @@ export function ActivityAnalytics({
           <section
             key={group.title}
             aria-label={group.title}
-            className="rounded-lg border bg-card p-4"
+            className="rounded-lg border border-t-[3px] bg-card p-4"
+            style={{ borderTopColor: group.accent }}
           >
             <h3 className="mb-3 text-sm font-semibold">{group.title}</h3>
             <div className="grid grid-cols-2 gap-3">

@@ -4282,8 +4282,8 @@ paths:
       - User Identities
   /users/activity:
     get:
-      description: Returns complete login activity summaries with server-side search,
-        ordering, and pagination.
+      description: Returns login activity summaries for OIDC-linked users with server-side
+        search, ordering, and pagination.
       parameters:
       - description: Case-insensitive name or email search
         in: query
@@ -4328,10 +4328,10 @@ paths:
   /users/activity/analytics:
     get:
       description: Returns lifetime, current-month, and rolling-window login metrics
-        plus a daily trend. Rolling and monthly boundaries use each daily fact's recorded
-        user-local IANA timezone.
+        for OIDC-linked users plus a daily trend. Rolling and monthly boundaries use
+        each daily fact's recorded user-local IANA timezone.
       parameters:
-      - description: 'Rolling window in days: 7, 30, or 90 (default 30)'
+      - description: Rolling window in days (default 30, max 365)
         in: query
         name: window
         type: integer
@@ -4363,7 +4363,7 @@ paths:
         name: id
         required: true
         type: string
-      - description: 'Rolling window in days: 7, 30, or 90 (default 30)'
+      - description: Rolling window in days (default 30, max 365)
         in: query
         name: window
         type: integer
@@ -4392,6 +4392,10 @@ paths:
         in: query
         name: days
         type: integer
+      - description: Only users who have never logged in
+        in: query
+        name: never
+        type: boolean
       - description: Case-insensitive name or email search
         in: query
         name: query

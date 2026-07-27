@@ -17,7 +17,7 @@
 
 "use client";
 
-import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import {
   type InactiveUserParams,
@@ -54,7 +54,7 @@ export function useUserActivity(params: UserActivityParams = {}) {
   });
 }
 
-export function useUserActivityAnalytics(windowDays: 7 | 30 | 90) {
+export function useUserActivityAnalytics(windowDays: number) {
   const { status } = useSession();
   return useQuery({
     queryKey: activityKeys.analytics(windowDays),
@@ -66,7 +66,7 @@ export function useUserActivityAnalytics(windowDays: 7 | 30 | 90) {
   });
 }
 
-export function useSelectedUserActivityAnalytics(userID: string | null, windowDays: 7 | 30 | 90) {
+export function useSelectedUserActivityAnalytics(userID: string | null, windowDays: number) {
   const { status } = useSession();
   return useQuery({
     queryKey: activityKeys.userAnalytics(userID ?? "", windowDays),
@@ -78,19 +78,15 @@ export function useSelectedUserActivityAnalytics(userID: string | null, windowDa
   });
 }
 
-export function useInactiveUsers(params: Omit<InactiveUserParams, "offset">) {
+export function useInactiveUsers(params: InactiveUserParams, enabled = true) {
   const { status } = useSession();
-  return useInfiniteQuery({
+  return useQuery({
     queryKey: activityKeys.inactive(params),
-    queryFn: ({ pageParam }) => getInactiveUsers({ ...params, offset: pageParam }),
-    enabled: status === "authenticated",
-    initialPageParam: 0,
-    getNextPageParam: (lastPage, pages) => {
-      const loaded = pages.reduce((total, page) => total + page.items.length, 0);
-      return loaded < lastPage.total ? loaded : undefined;
-    },
+    queryFn: () => getInactiveUsers(params),
+    enabled: status === "authenticated" && enabled,
     staleTime: DEFAULTS.staleTime,
     gcTime: DEFAULTS.gcTime,
     refetchOnWindowFocus: DEFAULTS.refetchOnWindowFocus,
+    placeholderData: DEFAULTS.placeholderData,
   });
 }

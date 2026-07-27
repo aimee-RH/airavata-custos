@@ -172,7 +172,7 @@ type InactiveUserListResponse struct {
 }
 
 // @Summary	List user activity (paginated)
-// @Description	Returns complete login activity summaries with server-side search, ordering, and pagination.
+// @Description	Returns login activity summaries for OIDC-linked users with server-side search, ordering, and pagination.
 // @Tags	Users
 // @Security	BearerAuth
 // @Produce	json
@@ -202,11 +202,11 @@ func (s *Server) listUserActivity(w http.ResponseWriter, r *http.Request) {
 }
 
 // @Summary Get user activity analytics
-// @Description Returns lifetime, current-month, and rolling-window login metrics plus a daily trend.
+// @Description Returns lifetime, current-month, and rolling-window login metrics for OIDC-linked users plus a daily trend.
 // @Tags Users
 // @Security BearerAuth
 // @Produce json
-// @Param window query integer false "Rolling window in days: 7, 30, or 90 (default 30)"
+// @Param window query integer false "Rolling window in days (default 30, max 365)"
 // @Success 200 {object} store.UserActivityAnalytics
 // @Failure 400 {object} object{error=string}
 // @Router /users/activity/analytics [get]
@@ -242,7 +242,7 @@ func (s *Server) getUserActivityAnalytics(w http.ResponseWriter, r *http.Request
 // @Security BearerAuth
 // @Produce json
 // @Param id path string true "User ID"
-// @Param window query integer false "Rolling window in days: 7, 30, or 90 (default 30)"
+// @Param window query integer false "Rolling window in days (default 30, max 365)"
 // @Success 200 {object} store.UserActivityAnalytics
 // @Failure 400 {object} object{error=string}
 // @Failure 404 {object} object{error=string}
@@ -267,6 +267,7 @@ func (s *Server) getSelectedUserActivityAnalytics(w http.ResponseWriter, r *http
 // @Security BearerAuth
 // @Produce json
 // @Param days query integer false "Minimum inactive calendar days (default 7, max 3650)"
+// @Param never query boolean false "Only users who have never logged in"
 // @Param query query string false "Case-insensitive name or email search"
 // @Param limit query integer false "Page size (default 50, max 200)"
 // @Param offset query integer false "Page offset"
@@ -314,6 +315,7 @@ func parseUserActivityFilter(r *http.Request, inactive bool) (store.UserActivity
 		return store.UserActivityFilter{}, err
 	}
 	days := 0
+	neverLoggedIn := false
 	if inactive {
 		days, err = parseInt("days", 7)
 		if err != nil {
@@ -322,9 +324,15 @@ func parseUserActivityFilter(r *http.Request, inactive bool) (store.UserActivity
 		if days < 1 || days > 3650 {
 			return store.UserActivityFilter{}, fmt.Errorf("%w: days must be between 1 and 3650", service.ErrInvalidInput)
 		}
+		if raw := q.Get("never"); raw != "" {
+			neverLoggedIn, err = strconv.ParseBool(raw)
+			if err != nil {
+				return store.UserActivityFilter{}, fmt.Errorf("%w: never must be a boolean", service.ErrInvalidInput)
+			}
+		}
 	}
 	return store.UserActivityFilter{
-		Query: q.Get("query"), InactiveDays: days, Limit: limit, Offset: offset,
+		Query: q.Get("query"), InactiveDays: days, NeverLoggedIn: neverLoggedIn, Limit: limit, Offset: offset,
 		Sort: q.Get("sort"), Direction: q.Get("direction"),
 	}, nil
 }

@@ -150,3 +150,23 @@ func TestListUserActivityWrapsStoreError(t *testing.T) {
 		t.Fatalf("error = %v, want wrapped store error", err)
 	}
 }
+
+func TestUserActivityAnalyticsAcceptsCustomWindowAndRejectsOutOfRange(t *testing.T) {
+	var captured int
+	svc := &Service{users: &fakeUserStore{analyticsFn: func(_ context.Context, _ time.Time, days int) (*store.UserActivityAnalytics, error) {
+		captured = days
+		return &store.UserActivityAnalytics{WindowDays: days}, nil
+	}}}
+
+	if _, err := svc.GetUserActivityAnalytics(t.Context(), 14); err != nil {
+		t.Fatal(err)
+	}
+	if captured != 14 {
+		t.Fatalf("window = %d, want 14", captured)
+	}
+	for _, days := range []int{0, 366} {
+		if _, err := svc.GetUserActivityAnalytics(t.Context(), days); !errors.Is(err, ErrInvalidInput) {
+			t.Fatalf("window %d error = %v, want ErrInvalidInput", days, err)
+		}
+	}
+}

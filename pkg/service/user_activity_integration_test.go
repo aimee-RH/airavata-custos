@@ -25,12 +25,21 @@ import (
 	"time"
 
 	"github.com/apache/airavata-custos/internal/store"
+	"github.com/jmoiron/sqlx"
 )
+
+func seedActivityUser(t *testing.T, database *sqlx.DB, email string) string {
+	t.Helper()
+	id := seedUser(t, database, email)
+	seedOIDCIdentity(t, database, id, "oidc-"+id, email)
+	return id
+}
 
 func TestListUserActivitySearchSortAndDerivedFieldsIntegration(t *testing.T) {
 	database := setupTestDB(t)
-	aliceID := seedUser(t, database, "Alice.Search@example.org")
-	bobID := seedUser(t, database, "bob@example.org")
+	aliceID := seedActivityUser(t, database, "Alice.Search@example.org")
+	bobID := seedActivityUser(t, database, "bob@example.org")
+	seedUser(t, database, "cluster-local@example.org")
 	if _, err := database.Exec(`UPDATE users SET first_name = 'Alice', last_name = 'Zephyr', timezone = 'America/New_York', last_login = '2026-07-23 15:00:00', last_login_local_date = '2026-07-23', login_count = 5, login_day_count = 2, login_streak = 4 WHERE id = ?`, aliceID); err != nil {
 		t.Fatal(err)
 	}
@@ -72,13 +81,13 @@ func TestListInactiveUsersUsesLocalCalendarDaysIntegration(t *testing.T) {
 	now := time.Date(2026, 7, 24, 2, 0, 0, 0, time.UTC) // NY=Jul 23, Shanghai=Jul 24.
 	seedActivitySummary := func(email, timezone, localDate string) string {
 		t.Helper()
-		id := seedUser(t, database, email)
+		id := seedActivityUser(t, database, email)
 		if _, err := database.Exec(`UPDATE users SET timezone = ?, last_login = '2026-07-20 12:00:00', last_login_local_date = ?, login_count = 1, login_day_count = 1, login_streak = 1 WHERE id = ?`, timezone, localDate, id); err != nil {
 			t.Fatal(err)
 		}
 		return id
 	}
-	neverID := seedUser(t, database, "never@example.org")
+	neverID := seedActivityUser(t, database, "never@example.org")
 	sixDayID := seedActivitySummary("six@example.org", "UTC", "2026-07-18")
 	sevenDayID := seedActivitySummary("seven@example.org", "UTC", "2026-07-17")
 	eightDayID := seedActivitySummary("eight@example.org", "UTC", "2026-07-16")
@@ -111,8 +120,8 @@ func TestListInactiveUsersUsesLocalCalendarDaysIntegration(t *testing.T) {
 func TestUserActivityAnalyticsFromDailyFactsIntegration(t *testing.T) {
 	database := setupTestDB(t)
 	now := time.Date(2026, 8, 1, 2, 0, 0, 0, time.UTC) // Shanghai=Aug 1, New York=Jul 31.
-	aliceID := seedUser(t, database, "analytics-alice@example.org")
-	bobID := seedUser(t, database, "analytics-bob@example.org")
+	aliceID := seedActivityUser(t, database, "analytics-alice@example.org")
+	bobID := seedActivityUser(t, database, "analytics-bob@example.org")
 	if _, err := database.Exec(`UPDATE users SET login_count = 4, login_day_count = 3 WHERE id = ?`, aliceID); err != nil {
 		t.Fatal(err)
 	}
@@ -156,8 +165,8 @@ func TestUserActivityAnalyticsFromDailyFactsIntegration(t *testing.T) {
 func TestSelectedUserActivityAnalyticsIsIsolatedIntegration(t *testing.T) {
 	database := setupTestDB(t)
 	now := time.Date(2026, 7, 24, 12, 0, 0, 0, time.UTC)
-	aliceID := seedUser(t, database, "selected-alice@example.org")
-	bobID := seedUser(t, database, "selected-bob@example.org")
+	aliceID := seedActivityUser(t, database, "selected-alice@example.org")
+	bobID := seedActivityUser(t, database, "selected-bob@example.org")
 	if _, err := database.Exec(`UPDATE users SET login_count = 3, login_day_count = 2 WHERE id = ?`, aliceID); err != nil {
 		t.Fatal(err)
 	}
@@ -186,7 +195,7 @@ func TestSelectedUserActivityAnalyticsIsIsolatedIntegration(t *testing.T) {
 
 func TestUserActivityAnalyticsEmptyFactsIntegration(t *testing.T) {
 	database := setupTestDB(t)
-	seedUser(t, database, "analytics-never@example.org")
+	seedActivityUser(t, database, "analytics-never@example.org")
 	result, err := newTestService(database).users.GetActivityAnalytics(
 		t.Context(), time.Date(2026, 7, 24, 12, 0, 0, 0, time.UTC), 30,
 	)
@@ -205,7 +214,7 @@ func TestListInactiveUsersAccurateTotalAndStablePaginationIntegration(t *testing
 	database := setupTestDB(t)
 	now := time.Date(2026, 7, 24, 12, 0, 0, 0, time.UTC)
 	for i := 0; i < 55; i++ {
-		id := seedUser(t, database, fmt.Sprintf("inactive-%02d@example.org", i))
+		id := seedActivityUser(t, database, fmt.Sprintf("inactive-%02d@example.org", i))
 		if _, err := database.Exec(`UPDATE users SET last_login = '2026-07-01 12:00:00', last_login_local_date = '2026-07-01', login_count = 1, login_day_count = 1, login_streak = 1 WHERE id = ?`, id); err != nil {
 			t.Fatal(err)
 		}

@@ -35,9 +35,30 @@ const COLUMNS: Column[] = [
   { key: "name", label: "Name" },
   { key: "last_login", label: "Last Login" },
   { key: "login_count", label: "Total Logins" },
-  { key: "login_day_count", label: "Active Days" },
-  { key: "current_streak", label: "Current Streak" },
+  { key: "current_streak", label: "Login Streak" },
 ];
+
+function ActivityStatus({ row }: { row: UserActivityRow }) {
+  if (row.last_login === null) {
+    return (
+      <span className="rounded-full bg-destructive/10 px-2 py-0.5 text-xs font-medium text-destructive">
+        Never logged in
+      </span>
+    );
+  }
+  if (row.inactive_days !== null && row.inactive_days >= 7) {
+    return (
+      <span className="rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-400">
+        Inactive {row.inactive_days}d
+      </span>
+    );
+  }
+  return (
+    <span className="rounded-full bg-green-500/10 px-2 py-0.5 text-xs font-medium text-green-700 dark:text-green-400">
+      Active
+    </span>
+  );
+}
 
 function SortIcon({
   column,
@@ -153,7 +174,7 @@ export function ActivityTable({
                   </span>
                 </TableHead>
               ))}
-              <TableHead>Avg / Active Day</TableHead>
+              <TableHead>Status</TableHead>
               {onViewAnalytics ? <TableHead className="text-right">Audit</TableHead> : null}
             </TableRow>
           </TableHeader>
@@ -188,7 +209,6 @@ export function ActivityTable({
                     </TableCell>
 
                     <TableCell className="text-sm">{row.login_count}</TableCell>
-                    <TableCell className="text-sm">{row.login_day_count}</TableCell>
                     <TableCell>
                       {streak > 0 ? (
                         <span className="inline-flex items-center gap-1 text-sm font-medium">
@@ -199,8 +219,8 @@ export function ActivityTable({
                         <span className="text-sm text-muted-foreground">—</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">
-                      {row.average_logins_per_active_day?.toFixed(2) ?? "—"}
+                    <TableCell>
+                      <ActivityStatus row={row} />
                     </TableCell>
                     {onViewAnalytics ? (
                       <TableCell className="text-right">

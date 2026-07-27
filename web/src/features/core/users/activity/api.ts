@@ -37,12 +37,15 @@ export type UserActivityParams = {
 
 export type InactiveUserParams = {
   days: number;
+  never?: boolean;
   query?: string;
   limit?: number;
   offset?: number;
+  sort?: ActivitySortKey;
+  direction?: SortDirection;
 };
 
-function queryString(params: Record<string, string | number | undefined>): string {
+function queryString(params: Record<string, string | number | boolean | undefined>): string {
   const search = new URLSearchParams();
   for (const [key, value] of Object.entries(params)) {
     if (value !== undefined && value !== "") search.set(key, String(value));
@@ -61,16 +64,14 @@ export async function getInactiveUsers(params: InactiveUserParams): Promise<Inac
   return inactiveUserListSchema.parse(raw);
 }
 
-export async function getUserActivityAnalytics(
-  windowDays: 7 | 30 | 90,
-): Promise<UserActivityAnalytics> {
+export async function getUserActivityAnalytics(windowDays: number): Promise<UserActivityAnalytics> {
   const raw = await apiFetch(`/users/activity/analytics?window=${windowDays}`);
   return userActivityAnalyticsSchema.parse(raw);
 }
 
 export async function getSelectedUserActivityAnalytics(
   userID: string,
-  windowDays: 7 | 30 | 90,
+  windowDays: number,
 ): Promise<UserActivityAnalytics> {
   const raw = await apiFetch(
     `/users/${encodeURIComponent(userID)}/activity/analytics?window=${windowDays}`,

@@ -1640,6 +1640,7 @@ export const zGetUsersByIdActivityAnalyticsResponse = zUserActivityAnalytics;
 
 export const zGetUsersInactiveQuery = z.object({
     days: z.int().optional(),
+    never: z.boolean().optional(),
     query: z.string().optional(),
     limit: z.int().optional(),
     offset: z.int().optional()

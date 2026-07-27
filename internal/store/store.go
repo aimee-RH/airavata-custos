@@ -44,13 +44,14 @@ type UserActivityRow struct {
 
 // UserActivityFilter controls server-side filtering, ordering, and pagination.
 type UserActivityFilter struct {
-	Query        string
-	InactiveDays int
-	Limit        int
-	Offset       int
-	Sort         string
-	Direction    string
-	Now          time.Time
+	Query         string
+	InactiveDays  int
+	NeverLoggedIn bool
+	Limit         int
+	Offset        int
+	Sort          string
+	Direction     string
+	Now           time.Time
 }
 
 // UserActivityTrendPoint is one user-local calendar-day analytics bucket.
@@ -99,11 +100,11 @@ type UserStore interface {
 	UpdateStatus(ctx context.Context, tx *sql.Tx, id string, status models.UserStatus) error
 	// Delete removes a user by ID within the provided transaction.
 	Delete(ctx context.Context, tx *sql.Tx, id string) error
-	// ListActivity returns a page of user activity summaries ordered by
+	// ListActivity returns a page of OIDC-linked user activity summaries ordered by
 	// last_login descending (never-logged-in users last), plus the total count
 	// matching the filter.
 	ListActivity(ctx context.Context, f UserActivityFilter) ([]UserActivityRow, int, error)
-	// GetActivityAnalytics derives system-wide rolling and monthly metrics from daily facts.
+	// GetActivityAnalytics derives OIDC-user rolling and monthly metrics from daily facts.
 	GetActivityAnalytics(ctx context.Context, now time.Time, windowDays int) (*UserActivityAnalytics, error)
 	// GetUserActivityAnalytics derives the same metrics restricted to one user.
 	GetUserActivityAnalytics(ctx context.Context, userID string, now time.Time, windowDays int) (*UserActivityAnalytics, error)

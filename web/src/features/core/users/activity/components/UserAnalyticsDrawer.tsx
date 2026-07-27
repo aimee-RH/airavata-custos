@@ -37,7 +37,7 @@ export function UserAnalyticsDrawer({
   user: UserActivityRow | null;
   onOpenChange: (open: boolean) => void;
 }) {
-  const [windowDays, setWindowDays] = React.useState<7 | 30 | 90>(30);
+  const [windowDays, setWindowDays] = React.useState(30);
   const analytics = useSelectedUserActivityAnalytics(user?.user_id ?? null, windowDays);
 
   React.useEffect(() => {
@@ -67,7 +67,7 @@ export function UserAnalyticsDrawer({
           ) : analytics.data && user ? (
             <ActivityAnalytics
               data={analytics.data}
-              windowDays={analytics.data.window_days as 7 | 30 | 90}
+              windowDays={analytics.data.window_days}
               onWindowChange={setWindowDays}
               subjectName={user.name}
               compact

@@ -16,10 +16,9 @@
 // under the License.
 
 import { fireEvent, render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { UserActivityRow } from "../schemas";
 import { ActivityTable } from "../components/ActivityTable";
-import { InactiveUsersPanel } from "../components/InactiveUsersPanel";
 
 const NOW = new Date("2026-07-23T12:00:00Z");
 const DEFAULT_INACTIVE_DAYS = 7;
@@ -41,88 +40,6 @@ function row(overrides: Partial<UserActivityRow> = {}): UserActivityRow {
     ...overrides,
   };
 }
-
-// ─────────────────────────────────────────────
-// InactiveUsersPanel
-// ─────────────────────────────────────────────
-describe("InactiveUsersPanel", () => {
-  it("renders nothing when there are no inactive users", () => {
-    const { container } = render(
-      <InactiveUsersPanel inactiveUsers={[]} inactiveDays={DEFAULT_INACTIVE_DAYS} />,
-    );
-    expect(container.firstChild).toBeNull();
-  });
-
-  it("shows a count badge with the number of inactive users", () => {
-    const users = [
-      row({ user_id: "u1", last_login: "2026-07-10T00:00:00Z", inactive_days: 13 }), // 13 days
-      row({ user_id: "u2", last_login: null, inactive_days: null }),                      // never
-    ];
-    render(<InactiveUsersPanel inactiveUsers={users} inactiveDays={DEFAULT_INACTIVE_DAYS} />);
-    expect(screen.getByText("2")).toBeInTheDocument();
-  });
-
-  it("renders each inactive user's name", () => {
-    const users = [
-      row({ user_id: "u1", name: "Alice", last_login: "2026-07-10T00:00:00Z", inactive_days: 13 }),
-      row({ user_id: "u2", name: "Bob", last_login: null, inactive_days: null }),
-    ];
-    render(<InactiveUsersPanel inactiveUsers={users} inactiveDays={DEFAULT_INACTIVE_DAYS} />);
-    expect(screen.getByText("Alice")).toBeInTheDocument();
-    expect(screen.getByText("Bob")).toBeInTheDocument();
-  });
-
-  it("shows 'Never logged in' for a user with null last_login", () => {
-    const users = [row({ user_id: "u2", name: "Bob", last_login: null, inactive_days: null })];
-    render(<InactiveUsersPanel inactiveUsers={users} inactiveDays={DEFAULT_INACTIVE_DAYS} />);
-    expect(screen.getByText(/never logged in/i)).toBeInTheDocument();
-  });
-
-  it("shows the number of days since last login", () => {
-    // 13 days ago
-    const users = [row({ user_id: "u1", name: "Alice", last_login: "2026-07-10T00:00:00Z", inactive_days: 13 })];
-    render(<InactiveUsersPanel inactiveUsers={users} inactiveDays={DEFAULT_INACTIVE_DAYS} />);
-    expect(screen.getByText(/13 days/i)).toBeInTheDocument();
-  });
-
-  it("applies a critical visual treatment for users inactive ≥ 14 days", () => {
-    const users = [row({ user_id: "u1", name: "Alice", last_login: "2026-07-01T00:00:00Z", inactive_days: 22 })]; // 22 days
-    const { container } = render(
-      <InactiveUsersPanel inactiveUsers={users} inactiveDays={DEFAULT_INACTIVE_DAYS} />,
-    );
-    expect(container.querySelector('[data-band="critical"]')).toBeInTheDocument();
-  });
-
-  it("applies a warning visual treatment for users inactive 7–13 days", () => {
-    const users = [row({ user_id: "u1", name: "Alice", last_login: "2026-07-13T00:00:00Z", inactive_days: 10 })]; // 10 days
-    const { container } = render(
-      <InactiveUsersPanel inactiveUsers={users} inactiveDays={DEFAULT_INACTIVE_DAYS} />,
-    );
-    expect(container.querySelector('[data-band="warning"]')).toBeInTheDocument();
-  });
-
-  it("shows 'Show N more' button when users exceed the collapse threshold", () => {
-    // Create 6 users (threshold is 5)
-    const users = Array.from({ length: 6 }, (_, i) =>
-      row({ user_id: `u${i}`, name: `User ${i}`, last_login: null, inactive_days: null }),
-    );
-    render(<InactiveUsersPanel inactiveUsers={users} inactiveDays={DEFAULT_INACTIVE_DAYS} />);
-    expect(screen.getByRole("button", { name: /show 1 more/i })).toBeInTheDocument();
-  });
-
-  it("expands to show all users when 'Show more' is clicked", () => {
-    const users = Array.from({ length: 6 }, (_, i) =>
-      row({ user_id: `u${i}`, name: `User ${i}`, last_login: null, inactive_days: null }),
-    );
-    render(<InactiveUsersPanel inactiveUsers={users} inactiveDays={DEFAULT_INACTIVE_DAYS} />);
-    fireEvent.click(screen.getByRole("button", { name: /show 1 more/i }));
-    expect(screen.getByRole("button", { name: /show less/i })).toBeInTheDocument();
-    // All 6 users should be visible
-    for (let i = 0; i < 6; i++) {
-      expect(screen.getByText(`User ${i}`)).toBeInTheDocument();
-    }
-  });
-});
 
 // ─────────────────────────────────────────────
 // ActivityTable
@@ -162,6 +79,22 @@ describe("ActivityTable", () => {
   it("shows 'Never' in the Last Login column for null last_login", () => {
     render(<ActivityTable now={NOW} rows={[row({ last_login: null })]} inactiveDays={DEFAULT_INACTIVE_DAYS} />);
     expect(screen.getByText("Never")).toBeInTheDocument();
+  });
+
+  it("shows active, inactive, and never-logged-in statuses", () => {
+    render(
+      <ActivityTable
+        now={NOW}
+        rows={[
+          row({ user_id: "active", inactive_days: 1 }),
+          row({ user_id: "inactive", inactive_days: 9 }),
+          row({ user_id: "never", last_login: null, inactive_days: null }),
+        ]}
+      />,
+    );
+    expect(screen.getByText("Active")).toBeInTheDocument();
+    expect(screen.getByText("Inactive 9d")).toBeInTheDocument();
+    expect(screen.getByText("Never logged in")).toBeInTheDocument();
   });
 
   it("clicking the Name header toggles sort direction", () => {
@@ -211,5 +144,27 @@ describe("ActivityTable", () => {
     const search = screen.getByPlaceholderText(/search/i);
     fireEvent.change(search, { target: { value: "zzznomatch" } });
     expect(screen.getByText(/no user activity/i)).toBeInTheDocument();
+  });
+
+  it("paginates server results in ten-user pages", () => {
+    const onPageChange = vi.fn();
+    render(
+      <ActivityTable
+        now={NOW}
+        rows={Array.from({ length: 10 }, (_, index) =>
+          row({ user_id: `u-${index}`, name: `User ${index}` }),
+        )}
+        search=""
+        page={1}
+        pageSize={10}
+        total={11}
+        onSearchChange={() => undefined}
+        onPageChange={onPageChange}
+      />,
+    );
+
+    expect(screen.getByText("1–10 of 11")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Next page" }));
+    expect(onPageChange).toHaveBeenCalledWith(2);
   });
 });

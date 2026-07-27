@@ -168,9 +168,14 @@ func (s *mysqlUserStore) ListActivity(ctx context.Context, f UserActivityFilter)
 	effectiveZoneSQL, effectiveZoneArgs := activityTimezoneCase(zones)
 	localTodaySQL, localTodayArgs := activityLocalTodayCase(zones, f.Now)
 	search := "%" + escapeLike(strings.ToLower(f.Query)) + "%"
-	where := `WHERE (? = '' OR LOWER(email) LIKE ? ESCAPE '\\' OR LOWER(TRIM(CONCAT_WS(' ', first_name, middle_name, last_name))) LIKE ? ESCAPE '\\')`
+	where := `WHERE EXISTS (
+		SELECT 1 FROM user_identities ui
+		WHERE ui.user_id = u.id AND ui.oidc_sub IS NOT NULL AND ui.oidc_sub <> ''
+	) AND (? = '' OR LOWER(u.email) LIKE ? ESCAPE '\\' OR LOWER(TRIM(CONCAT_WS(' ', u.first_name, u.middle_name, u.last_name))) LIKE ? ESCAPE '\\')`
 	whereArgs := []any{f.Query, search, search}
-	if f.InactiveDays > 0 {
+	if f.NeverLoggedIn {
+		where += ` AND last_login_local_date IS NULL`
+	} else if f.InactiveDays > 0 {
 		where += ` AND (last_login_local_date IS NULL OR DATEDIFF(` + localTodaySQL + `, last_login_local_date) >= ?)`
 		whereArgs = append(whereArgs, localTodayArgs...)
 		whereArgs = append(whereArgs, f.InactiveDays)
@@ -182,12 +187,8 @@ func (s *mysqlUserStore) ListActivity(ctx context.Context, f UserActivityFilter)
 	}
 
 	orderSQL, orderArgs := activityOrder(f, localTodaySQL, localTodayArgs)
-	inactiveDaysSQL := "NULL"
-	inactiveDaysArgs := []any(nil)
-	if f.InactiveDays > 0 {
-		inactiveDaysSQL = `CASE WHEN u.last_login_local_date IS NULL THEN NULL ELSE DATEDIFF(` + localTodaySQL + `, u.last_login_local_date) END`
-		inactiveDaysArgs = append(inactiveDaysArgs, localTodayArgs...)
-	}
+	inactiveDaysSQL := `CASE WHEN u.last_login_local_date IS NULL THEN NULL ELSE DATEDIFF(` + localTodaySQL + `, u.last_login_local_date) END`
+	inactiveDaysArgs := append([]any(nil), localTodayArgs...)
 	query := `SELECT
 		u.id AS user_id,
 		COALESCE(NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''), u.email) AS name,
@@ -235,9 +236,17 @@ func (s *mysqlUserStore) GetActivityAnalytics(ctx context.Context, now time.Time
 	monthArgs := append(append([]any{}, monthStartArgs...), localTodayArgs...)
 
 	result := &UserActivityAnalytics{GeneratedAt: now.UTC(), WindowDays: windowDays, Trend: []UserActivityTrendPoint{}}
+	oidcUserCondition := `EXISTS (
+		SELECT 1 FROM user_identities ui
+		WHERE ui.user_id = u.id AND ui.oidc_sub IS NOT NULL AND ui.oidc_sub <> ''
+	)`
+	oidcDailyUserCondition := `EXISTS (
+		SELECT 1 FROM user_identities ui
+		WHERE ui.user_id = d.user_id AND ui.oidc_sub IS NOT NULL AND ui.oidc_sub <> ''
+	)`
 	summary := `SELECT
-		(SELECT COUNT(*) FROM users) AS total_users,
-		(SELECT COUNT(*) FROM users WHERE login_count > 0) AS users_ever_logged_in,
+		(SELECT COUNT(*) FROM users u WHERE ` + oidcUserCondition + `) AS total_users,
+		(SELECT COUNT(*) FROM users u WHERE ` + oidcUserCondition + ` AND u.login_count > 0) AS users_ever_logged_in,
 		COALESCE(SUM(d.login_count), 0) AS lifetime_login_count,
 		COUNT(*) AS lifetime_active_days,
 		COUNT(DISTINCT CASE WHEN ` + windowCondition + ` THEN d.user_id END) AS active_users,
@@ -246,7 +255,8 @@ func (s *mysqlUserStore) GetActivityAnalytics(ctx context.Context, now time.Time
 		COUNT(DISTINCT CASE WHEN ` + monthCondition + ` THEN d.user_id END) AS monthly_active_users,
 		COALESCE(SUM(CASE WHEN ` + monthCondition + ` THEN d.login_count ELSE 0 END), 0) AS monthly_login_count,
 		COUNT(CASE WHEN ` + monthCondition + ` THEN 1 END) AS monthly_active_days
-	FROM user_login_daily d`
+	FROM user_login_daily d
+	WHERE ` + oidcDailyUserCondition
 	summaryArgs := make([]any, 0, 3*len(windowArgs)+3*len(monthArgs))
 	for range 3 {
 		summaryArgs = append(summaryArgs, windowArgs...)
@@ -263,7 +273,7 @@ func (s *mysqlUserStore) GetActivityAnalytics(ctx context.Context, now time.Time
 	}
 	trend := `SELECT DATE_FORMAT(d.local_date, '%Y-%m-%d') AS date,
 		COUNT(DISTINCT d.user_id) AS active_users, SUM(d.login_count) AS login_count
-	FROM user_login_daily d WHERE ` + windowCondition + `
+	FROM user_login_daily d WHERE ` + windowCondition + ` AND ` + oidcDailyUserCondition + `
 	GROUP BY d.local_date ORDER BY d.local_date`
 	if err := s.db.SelectContext(ctx, &result.Trend, trend, windowArgs...); err != nil {
 		return nil, err
