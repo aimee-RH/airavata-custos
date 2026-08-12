@@ -78,7 +78,6 @@ export function UsersTable({
   const identityFilter = searchParams.get("identity") ?? "all";
   const filtersActive =
     Boolean(search.trim()) || (canManageRoles && roleFilter !== "all") || identityFilter !== "all";
-  const selectedUser = users.find((user) => user.id === selectedId) ?? null;
 
   function roleLabelFor(value: string): string {
     if (value === "all") return "All roles";
@@ -88,6 +87,7 @@ export function UsersTable({
   function identityLabelFor(value: string): string {
     return value === "all" ? "All external identities" : identitySourceLabel(value);
   }
+  const selectedUser = users.find((user) => user.id === selectedId) ?? null;
 
   function resetSelection() {
     setSelectedId(null);
