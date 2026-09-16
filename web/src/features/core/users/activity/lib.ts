@@ -25,7 +25,7 @@ export function activityStatus(user: UserActivityRow, windowDays: number) {
 export function formatLastLogin(user: UserActivityRow) {
   if (user.last_login === null) return "Never";
   if (user.inactive_days === null) return "Date unavailable";
-  if (user.inactive_days === 0) return "Today";
+  if (user.inactive_days <= 0) return "Today";
   if (user.inactive_days === 1) return "Yesterday";
   return `${user.inactive_days} days ago`;
 }

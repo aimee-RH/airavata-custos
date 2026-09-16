@@ -201,6 +201,7 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
                 />
                 <Tooltip labelFormatter={(_, payload) => payload[0]?.payload.date ?? ""} />
                 <Bar
+                  isAnimationActive={false}
                   dataKey="loginSessions"
                   name="Sign-ins per day"
                   fill="var(--custos-blue-500)"
@@ -212,6 +213,7 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
                   })}
                 </Bar>
                 <Line
+                  isAnimationActive={false}
                   type="linear"
                   dataKey="activeUsers"
                   name="Distinct users"

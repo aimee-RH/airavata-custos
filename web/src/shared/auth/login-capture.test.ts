@@ -107,4 +107,20 @@ describe("captureLoginEvent", () => {
     });
     expect(fetcher).toHaveBeenCalledTimes(1);
   });
+  it("bounds each request and allows login to continue after exhausted failures", async () => {
+    const fetcher = vi.fn().mockRejectedValue(new Error("unavailable"));
+    const sleeper = vi.fn().mockResolvedValue(undefined);
+    const result = await captureLoginEvent({
+      bearer: "test-token",
+      coreApiBaseUrl: "http://core",
+      fetcher,
+      sleeper,
+    });
+    expect(result).toBe(false);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(fetcher.mock.calls[0]?.[1]).toEqual(
+      expect.objectContaining({ body: "{}", signal: expect.any(AbortSignal) }),
+    );
+    expect(sleeper.mock.calls.map((call) => call[0])).toEqual([50, 100]);
+  });
 });

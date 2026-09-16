@@ -23,7 +23,7 @@ import { getUserActivity } from "../api";
 import { StatusComposition } from "../components/ActivityOverview";
 import { ActivityPage } from "../components/ActivityPage";
 import { DaysRangePicker } from "../components/DaysRangePicker";
-import { activityStatus } from "../lib";
+import { activityStatus, formatLastLogin } from "../lib";
 
 const state = vi.hoisted(() => ({ allowed: true }));
 vi.mock("@/shared/casl/AbilityProvider", () => ({
@@ -107,7 +107,9 @@ describe("activity dashboard", () => {
   it("opens individual analytics and requests its independent range", async () => {
     dashboard();
     await screen.findByText("1–10 of 225");
-    fireEvent.click(screen.getAllByRole("button", { name: /View activity for/ })[0]!);
+    const button = screen.getAllByRole("button", { name: /View activity for/ })[0];
+    if (!button) throw new Error("Missing activity action");
+    fireEvent.click(button);
     expect(await screen.findByRole("dialog")).toBeInTheDocument();
     fireEvent.click(
       within(screen.getByRole("group", { name: "User analytics date range" })).getByRole("button", {
@@ -175,7 +177,9 @@ it("rejects an older backend that ignores the requested status/window", async ()
 });
 it("rejects missing window counts instead of inventing zeros", async () => {
   const result = activityList(new URL("http://localhost?window=30&status=all"));
-  const { window_login_count, ...oldRow } = result.items[0]!;
+  const first = result.items[0];
+  if (!first) throw new Error("Missing fixture row");
+  const { window_login_count, ...oldRow } = first;
   fetcher.mockResolvedValueOnce(
     new Response(JSON.stringify({ ...result, items: [oldRow] }), {
       headers: { "content-type": "application/json" },
@@ -194,8 +198,10 @@ it("rejects missing window counts instead of inventing zeros", async () => {
   ).rejects.toThrow();
 });
 it("uses server-local calendar days at the exact inactivity boundary", () => {
-  const user = activityList(new URL("http://localhost")).items[0]!;
+  const user = activityList(new URL("http://localhost")).items[0];
+  if (!user) throw new Error("Missing fixture row");
   expect(activityStatus({ ...user, inactive_days: 6 }, 7)).toBe("active");
+  expect(formatLastLogin({ ...user, inactive_days: -1 })).toBe("Today");
   expect(activityStatus({ ...user, inactive_days: 7 }, 7)).toBe("dormant");
   expect(activityStatus({ ...user, last_login: null, inactive_days: null }, 7)).toBe("never");
 });

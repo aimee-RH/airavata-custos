@@ -27,7 +27,7 @@ export const userActivityRowSchema = z.object({
   name: z.string(),
   email: z.string(),
   last_login: z.string().datetime({ offset: true }).nullable(),
-  inactive_days: count.nullable(),
+  inactive_days: z.number().int().nullable(),
   login_count: count,
   window_login_count: count,
   login_day_count: count,

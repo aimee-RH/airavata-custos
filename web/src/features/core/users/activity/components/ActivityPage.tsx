@@ -165,7 +165,11 @@ function ActivityDashboard() {
               <h2 id="activity-audit-heading">User activity audit</h2>
             </CardTitle>
             <p className="text-xs text-muted-foreground">
-              {users.data ? `${users.data.total} matching identities` : "Loading identities"}
+              {users.error
+                ? "Activity unavailable"
+                : users.data
+                  ? `${users.data.total} matching identities`
+                  : "Loading identities"}
             </p>
           </div>
           <div className="flex w-full flex-wrap gap-3 sm:w-auto">

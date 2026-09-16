@@ -33,7 +33,11 @@ export function PortalLayout({ children }: { children: ReactNode }) {
         <Sidebar />
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <Topbar />
-          <main id="main-content" className="flex-1 overflow-y-auto px-10 py-8" tabIndex={-1}>
+          <main
+            id="main-content"
+            className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-10 lg:py-8"
+            tabIndex={-1}
+          >
             {children}
           </main>
         </div>
