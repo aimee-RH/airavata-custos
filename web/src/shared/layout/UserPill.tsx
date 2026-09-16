@@ -17,6 +17,8 @@
 
 "use client";
 
+import { LogOut, Settings } from "lucide-react";
+import { useSession } from "next-auth/react";
 import { useSignOut } from "@/shared/auth/useSignOut";
 import { Avatar, AvatarFallback } from "@/shared/ui/avatar";
 import {
@@ -27,8 +29,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/shared/ui/dropdown-menu";
-import { LogOut, Settings } from "lucide-react";
-import { useSession } from "next-auth/react";
 
 export function UserPill() {
   const { data: session, status } = useSession();
@@ -41,7 +41,7 @@ export function UserPill() {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="hidden md:flex flex-col items-end leading-tight">
+      <div className="flex flex-col items-end leading-tight">
         <span className="text-sm font-semibold text-foreground">{loading ? "..." : name}</span>
         <span className="text-xs text-muted-foreground">{email}</span>
       </div>

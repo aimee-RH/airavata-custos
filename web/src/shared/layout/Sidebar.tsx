@@ -56,19 +56,19 @@ export function Sidebar() {
   })).filter((g) => g.items.length > 0);
 
   return (
-    <aside className="flex w-16 md:w-[240px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
-      <div className="px-3 md:px-6 pt-4 pb-6">
+    <aside className="flex w-[240px] shrink-0 flex-col border-r border-border bg-sidebar text-sidebar-foreground">
+      <div className="px-6 pt-4 pb-6">
         <Link href="/" aria-label={brand.name} className="inline-flex items-center">
           {/* Deployment brand logo; set NEXT_PUBLIC_PORTAL_LOGO to override. */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={brand.logo} alt={brand.name} className="h-8 w-full object-contain md:w-auto" />
+          <img src={brand.logo} alt={brand.name} className="h-8 w-auto" />
         </Link>
       </div>
 
       <nav className="flex flex-col">
         {groups.map(({ group, items }, idx) => (
           <div key={group} className={cn("flex flex-col", idx > 0 && "mt-4")}>
-            <div className="hidden md:block px-6 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-custos-gray-400">
+            <div className="px-6 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-custos-gray-400">
               {NAV_GROUP_LABELS[group]}
             </div>
             {items.map((item) => (
@@ -91,16 +91,15 @@ function SidebarLink({ item, active }: { item: NavItem; active: boolean }) {
     <Link
       href={item.href}
       aria-current={active ? "page" : undefined}
-      title={item.label}
       className={cn(
-        "relative flex h-11 items-center gap-3 px-5 md:px-6 text-sm font-medium transition",
+        "relative flex h-11 items-center gap-3 px-6 text-sm font-medium transition",
         active
           ? "bg-[var(--sidebar-active)] font-semibold text-foreground"
           : "text-muted-foreground hover:bg-[var(--sidebar-hover)] hover:text-foreground",
       )}
     >
-      <Icon className={cn("h-5 w-5 shrink-0 stroke-[1.75]", active && "text-brand")} />
-      <span className="sr-only md:not-sr-only md:truncate">{item.label}</span>
+      <Icon className={cn("h-5 w-5 stroke-[1.75]", active && "text-brand")} />
+      <span className="truncate">{item.label}</span>
       {active && <span className="absolute top-2 right-0 bottom-2 w-1 rounded-l-full bg-brand" />}
     </Link>
   );

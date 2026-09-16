@@ -30,7 +30,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { statusMeta } from "../lib";
+import { completeActivityTrend, statusMeta } from "../lib";
 import type { UserActivityAnalytics } from "../schemas";
 
 export function SummaryCard({
@@ -145,7 +145,7 @@ export function StatusComposition({ counts }: { counts: Record<keyof typeof stat
 
 export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) {
   const windowDays = analytics.window_days;
-  const data = analytics.trend.map((point) => ({
+  const data = completeActivityTrend(analytics).map((point) => ({
     date: point.date,
     label: point.date.slice(5),
     loginSessions: point.login_count,
@@ -153,7 +153,7 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
   }));
   const sessions = data.reduce((total, point) => total + point.loginSessions, 0);
   const peak = Math.max(0, ...data.map((point) => point.loginSessions));
-  const peakPoint = data.find((point) => point.loginSessions === peak);
+  const peakPoint = peak > 0 ? data.find((point) => point.loginSessions === peak) : undefined;
   const labelInterval = Math.max(0, Math.ceil(windowDays / 7) - 1);
 
   return (
@@ -180,7 +180,7 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
       </CardHeader>
       <CardContent>
         <div role="img" aria-label={`Sign-in trend for the last ${windowDays} days`}>
-          {data.length === 0 ? (
+          {sessions === 0 ? (
             <p className="flex h-40 items-center justify-center text-sm text-muted-foreground">
               No sign-ins in this period.
             </p>

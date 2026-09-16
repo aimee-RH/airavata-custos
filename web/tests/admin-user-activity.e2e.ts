@@ -52,20 +52,10 @@ test("users:read alone cannot open activity or fetch its data", async ({ page })
   expect(activityRequests).toEqual([]);
 });
 
-test("review screenshot and responsive layout", async ({ page }) => {
+test("review desktop screenshot", async ({ page }) => {
   await signInAs(page, "admin");
   await page.setViewportSize({ width: 1440, height: 1700 });
   await page.goto("/admin/users/activity");
   await expect(page.getByText("1–10 of 225")).toBeVisible();
   await page.screenshot({ path: "test-results/user-activity-desktop.png", fullPage: true });
-  await page.setViewportSize({ width: 390, height: 844 });
-  await expect(page.getByRole("button", { name: "Account menu" })).toBeInViewport();
-  const contentFits = await page
-    .locator("main")
-    .evaluate((element) => element.scrollWidth <= element.clientWidth);
-  expect(contentFits).toBe(true);
-  await page.screenshot({ path: "test-results/user-activity-mobile.png", fullPage: true });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
-    true,
-  );
 });

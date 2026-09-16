@@ -15,7 +15,7 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import type { UserActivityRow } from "./schemas";
+import type { UserActivityAnalytics, UserActivityRow } from "./schemas";
 
 export function activityStatus(user: UserActivityRow, windowDays: number) {
   if (user.last_login === null) return "never";
@@ -34,3 +34,25 @@ export const statusMeta = {
   dormant: { label: "Dormant", color: "var(--custos-amber-500)" },
   never: { label: "Never signed in", color: "var(--custos-red-500)" },
 } as const;
+
+/** Fill calendar-date gaps without interpreting user-local bucket labels in the browser timezone. */
+export function completeActivityTrend(analytics: UserActivityAnalytics) {
+  const points = new Map(analytics.trend.map((point) => [point.date, point]));
+  const end = new Date(analytics.generated_at);
+  end.setUTCHours(0, 0, 0, 0);
+  const start = new Date(end);
+  start.setUTCDate(start.getUTCDate() - analytics.window_days + 1);
+  // Mixed user timezones can produce boundary dates outside the nominal UTC window.
+  // Preserve every server bucket instead of clipping real activity at either edge.
+  for (const point of analytics.trend) {
+    const date = new Date(`${point.date}T00:00:00Z`);
+    if (date < start) start.setTime(date.getTime());
+    if (date > end) end.setTime(date.getTime());
+  }
+  const result: UserActivityAnalytics["trend"] = [];
+  for (const day = new Date(start); day <= end; day.setUTCDate(day.getUTCDate() + 1)) {
+    const date = day.toISOString().slice(0, 10);
+    result.push(points.get(date) ?? { date, active_users: 0, login_count: 0 });
+  }
+  return result;
+}

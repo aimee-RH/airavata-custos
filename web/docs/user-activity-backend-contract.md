@@ -55,7 +55,7 @@ For never-login users `last_login` and `inactive_days` are null and counts are z
 
 Both require: `generated_at`, `window_days`, `total_users`, `users_ever_logged_in`, `active_users`, `lifetime_login_count`, `lifetime_active_days`, `window_login_count`, `window_active_days`, and `trend` (`date`, `active_users`, `login_count`). Retain existing extra fields for other consumers. `active_users <= users_ever_logged_in <= total_users`.
 
-Cards derive Active from `active_users`, Dormant from `users_ever_logged_in - active_users`, and Never from `total_users - users_ever_logged_in`; these numbers must share the list's calendar semantics. Trend dates are user-local date buckets across the population, not one global 24-hour UTC interval. Trend rows must be ordered; return zero-day rows for the full window so the chart represents gaps correctly.
+Cards derive Active from `active_users`, Dormant from `users_ever_logged_in - active_users`, and Never from `total_users - users_ever_logged_in`; these numbers must share the list's calendar semantics. Trend dates are user-local date buckets across the population, not one global 24-hour UTC interval. Sparse trend rows are supported. The frontend fills missing calendar dates with zero sign-ins and zero active users, using the UTC date of `generated_at` for the nominal N-day display range. It preserves original date labels and all returned boundary dates, including user-local dates outside that UTC range. This does not reassign events to UTC days or infer each user’s timezone. Exact all-zero local edge dates require explicit report bounds from a future backend contract.
 
 The drawer initially uses the dashboard window, then allows an independent 1–365-day range. It requests only the selected user's analytics. Invalid windows return 400, unauthorized reads 403, absent users 404.
 
@@ -79,15 +79,13 @@ These use development mocks, not live user data.
 
 ![Desktop activity dashboard](images/user-activity-desktop.png)
 
-![Mobile activity dashboard](images/user-activity-mobile.png)
-
 ## Validation commands
 
 From `web/`: `pnpm lint`, `pnpm typecheck`, `pnpm test`, `pnpm gen:api:check`, `pnpm build`, and `pnpm exec playwright test tests/admin-user-activity.e2e.ts --workers=1`.
 
 Unit and browser checks with mocks validate frontend behavior only. Before marking ready: implement the list extensions in the backend PR, verify old/new status boundaries and accurate full-population totals against MariaDB, and verify real OIDC capture and authenticated page requests against that backend. Merge backend before enabling the frontend in production.
 
-The shared portal shell now uses a compact icon sidebar and smaller padding below the desktop breakpoint, keeping navigation and the account menu accessible on small screens. Activity-only custom roles get a direct authorized sidebar destination.
+The shared portal styling is unchanged from the target base. Only the Activity-specific navigation for custom roles is retained; broader mobile-shell redesign is outside this PR.
 
 ## Baseline tooling limitations
 

@@ -59,12 +59,10 @@ function NavArrows() {
 
 export function Topbar() {
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-3 md:px-8">
+    <header className="flex h-16 items-center justify-between border-b border-border bg-background px-8">
       <div className="flex items-center gap-4">
         <NavArrows />
-        <div className="hidden md:block">
-          <Breadcrumbs />
-        </div>
+        <Breadcrumbs />
       </div>
 
       <div className="flex items-center gap-4">
