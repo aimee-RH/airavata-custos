@@ -33,6 +33,7 @@ export function useUserActivity(params: UserActivityParams) {
     queryFn: () => getUserActivity(params),
     enabled,
     staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }
 export function useUserActivityAnalytics(windowDays: number, userID?: string, open = true) {
@@ -42,5 +43,6 @@ export function useUserActivityAnalytics(windowDays: number, userID?: string, op
     queryFn: () => getUserActivityAnalytics(windowDays, userID),
     enabled: enabled && open,
     staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 }

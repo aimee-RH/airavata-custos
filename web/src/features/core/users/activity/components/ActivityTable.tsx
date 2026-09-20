@@ -19,7 +19,7 @@
 import { Button } from "@/shared/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { formatLastLogin } from "../lib";
+import { activityStatus, formatLastLogin } from "../lib";
 import type { ActivitySortKey, SortDirection, UserActivityRow } from "../schemas";
 import { ActivityStatus } from "./ActivityStatus";
 
@@ -51,11 +51,12 @@ export function ActivityTable({
   function sortHeader(key: ActivitySortKey, label: string) {
     return (
       <TableHead
+        className={key === "login_count" ? "text-right" : undefined}
         aria-sort={sort === key ? (direction === "asc" ? "ascending" : "descending") : "none"}
       >
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded focus-visible:outline focus-visible:outline-2"
+          className="inline-flex items-center gap-1 rounded uppercase tracking-wide focus-visible:outline focus-visible:outline-2"
           onClick={() => onSort(key)}
         >
           {label}
@@ -72,9 +73,9 @@ export function ActivityTable({
   }
   return (
     <>
-      <Table>
+      <Table className="[&_td]:px-4 [&_td]:py-3 [&_th]:px-4">
         <caption className="sr-only">User login activity</caption>
-        <TableHeader>
+        <TableHeader className="bg-muted [&_th]:font-mono [&_th]:text-xs [&_th]:uppercase [&_th]:tracking-wide [&_th]:text-muted-foreground">
           <TableRow>
             {sortHeader("name", "User")}
             <TableHead>Status</TableHead>
@@ -92,39 +93,53 @@ export function ActivityTable({
               </TableCell>
             </TableRow>
           ) : (
-            rows.map((user) => (
-              <TableRow key={user.user_id}>
-                <TableCell>
-                  <p className="font-medium text-brand">{user.name}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
-                </TableCell>
-                <TableCell>
-                  <ActivityStatus user={user} windowDays={windowDays} />
-                </TableCell>
-                <TableCell>
-                  <span className="block">{formatLastLogin(user)}</span>
-                  <span className="block font-mono text-xs text-muted-foreground">
-                    {user.last_login
-                      ? `${new Date(user.last_login).toISOString().replace("T", " ").slice(0, 16)} UTC`
-                      : "No recorded sign-in"}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{user.window_login_count}</TableCell>
-                <TableCell className="tabular-nums text-muted-foreground">
-                  {user.login_count}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onSelect(user)}
-                    aria-label={`View activity for ${user.name}`}
-                  >
-                    View
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))
+            rows.map((user) => {
+              const status = activityStatus(user, windowDays);
+              const reviewAccess = status === "dormant" || status === "never";
+              return (
+                <TableRow key={user.user_id}>
+                  <TableCell>
+                    <p className="font-medium text-brand">{user.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {user.email}
+                      {user.role_names?.length ? ` · ${user.role_names.join(", ")}` : ""}
+                    </p>
+                  </TableCell>
+                  <TableCell>
+                    <ActivityStatus user={user} windowDays={windowDays} />
+                  </TableCell>
+                  <TableCell>
+                    <span className="block">{formatLastLogin(user)}</span>
+                    <span className="block font-mono text-xs text-muted-foreground tabular-nums">
+                      {user.last_login
+                        ? new Intl.DateTimeFormat("en-US", {
+                            month: "short",
+                            day: "numeric",
+                            year: "numeric",
+                            timeZone: "UTC",
+                          }).format(new Date(user.last_login))
+                        : "No recorded sign-in"}
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums">
+                    {user.window_login_count}
+                  </TableCell>
+                  <TableCell className="text-right tabular-nums text-muted-foreground">
+                    {user.login_count}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => onSelect(user)}
+                      aria-label={`${reviewAccess ? "Review access" : "View activity"} for ${user.name}`}
+                    >
+                      {reviewAccess ? "Review access" : "View"}
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              );
+            })
           )}
         </TableBody>
       </Table>
@@ -136,7 +151,7 @@ export function ActivityTable({
         </span>
         <div className="flex items-center gap-2">
           <label>
-            Rows{" "}
+            Rows per page{" "}
             <select
               className="rounded border bg-background p-1"
               aria-label="Rows per page"
@@ -150,6 +165,10 @@ export function ActivityTable({
           <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
             Previous
           </Button>
+          <span className="px-1 tabular-nums" aria-live="polite" aria-label="Current page">
+            <span className="font-medium text-foreground">{page}</span> of{" "}
+            {Math.max(1, Math.ceil(total / pageSize))}
+          </span>
           <Button
             variant="outline"
             size="sm"

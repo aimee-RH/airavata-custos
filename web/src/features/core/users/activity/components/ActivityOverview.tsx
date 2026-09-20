@@ -56,7 +56,7 @@ export function SummaryCard({
       onClick={onClick}
       aria-pressed={selected}
       className={cn(
-        "rounded-lg border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+        "min-h-36 rounded-lg border bg-card p-4 text-left shadow-sm transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
         selected ? "border-brand" : "border-border",
       )}
     >
@@ -111,7 +111,7 @@ export function StatusComposition({ counts }: { counts: Record<keyof typeof stat
       </CardHeader>
       <CardContent>
         <div
-          className="flex h-3 overflow-hidden rounded-sm"
+          className="flex h-3 overflow-hidden rounded-full"
           role="img"
           aria-label={entries
             .map(({ status, count }) => `${statusMeta[status].label} ${count}`)
@@ -128,7 +128,7 @@ export function StatusComposition({ counts }: { counts: Record<keyof typeof stat
           {entries.map(({ status, count, percent }) => (
             <span key={status} className="inline-flex items-center gap-2">
               <span
-                className="h-2.5 w-2.5 rounded-sm"
+                className="h-2.5 w-2.5 rounded-full"
                 style={{ backgroundColor: statusMeta[status].color }}
               />
               <span>{statusMeta[status].label}</span>
@@ -160,7 +160,7 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
     <Card>
       <CardHeader className="flex flex-row flex-wrap justify-between gap-3 pb-2">
         <div>
-          <CardTitle>Sign-in trend</CardTitle>
+          <CardTitle className="text-lg">Sign-in trend</CardTitle>
           <p className="text-sm text-muted-foreground">
             {sessions} sign-ins over {windowDays} days · {(sessions / windowDays).toFixed(1)} per
             day
@@ -169,8 +169,8 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
         </div>
         <div className="flex flex-wrap items-center gap-5 text-xs text-muted-foreground">
           <span className="inline-flex items-center gap-2">
-            <span className="h-2.5 w-2.5 rounded-sm bg-[color:var(--custos-blue-500)]" />
-            Sign-ins per day
+            <span className="h-2.5 w-2.5 rounded-full bg-[color:var(--custos-blue-500)]" />
+            Sign-ins per day (weekends lighter)
           </span>
           <span className="inline-flex items-center gap-2">
             <span className="h-0.5 w-5 bg-[color:var(--custos-green-500)]" />
@@ -179,6 +179,9 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
         </div>
       </CardHeader>
       <CardContent>
+        <p className="mb-2 text-xs text-muted-foreground">
+          Pale baseline marks indicate 0 sign-ins.
+        </p>
         <div role="img" aria-label={`Sign-in trend for the last ${windowDays} days`}>
           {sessions === 0 ? (
             <p className="flex h-40 items-center justify-center text-sm text-muted-foreground">
@@ -189,13 +192,24 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
               <ComposedChart data={data} margin={{ top: 8, right: 8, left: -12, bottom: 0 }}>
                 <CartesianGrid stroke="var(--border)" vertical={false} />
                 <XAxis
-                  dataKey="label"
+                  dataKey="date"
                   interval={labelInterval}
+                  tickFormatter={(label: string) =>
+                    new Intl.DateTimeFormat("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      timeZone: "UTC",
+                    }).format(new Date(`${label}T00:00:00Z`))
+                  }
+                  tickLine={false}
+                  tickMargin={8}
                   tick={{ fontSize: 11, fontFamily: "monospace" }}
                   stroke="var(--muted-foreground)"
                 />
                 <YAxis
                   allowDecimals={false}
+                  axisLine={false}
+                  tickLine={false}
                   tick={{ fontSize: 11, fontFamily: "monospace" }}
                   stroke="var(--muted-foreground)"
                 />
@@ -205,11 +219,19 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
                   dataKey="loginSessions"
                   name="Sign-ins per day"
                   fill="var(--custos-blue-500)"
+                  minPointSize={3}
                   radius={[3, 3, 0, 0]}
                 >
                   {data.map((point) => {
                     const day = new Date(`${point.date}T00:00:00Z`).getUTCDay();
-                    return <Cell key={point.date} fillOpacity={day === 0 || day === 6 ? 0.5 : 1} />;
+                    return (
+                      <Cell
+                        key={point.date}
+                        fillOpacity={
+                          point.loginSessions === 0 ? 0.2 : day === 0 || day === 6 ? 0.5 : 1
+                        }
+                      />
+                    );
                   })}
                 </Bar>
                 <Line

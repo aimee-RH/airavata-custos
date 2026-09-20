@@ -21,6 +21,7 @@ import { ErrorState } from "@/shared/ui/ErrorState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { Search } from "lucide-react";
 import * as React from "react";
 import { statusMeta } from "../lib";
 import { useUserActivity, useUserActivityAnalytics } from "../queries";
@@ -71,6 +72,18 @@ function ActivityDashboard() {
         never: data.total_users - data.users_ever_logged_in,
       }
     : null;
+  const activeChange =
+    data?.prior_active_users === undefined
+      ? undefined
+      : data.active_users - data.prior_active_users;
+  const oldestAccountDays = data?.oldest_never_created_at
+    ? Math.max(
+        0,
+        Math.floor(
+          (Date.parse(data.generated_at) - Date.parse(data.oldest_never_created_at)) / 86_400_000,
+        ),
+      )
+    : null;
   function changeView(value: ActivityView) {
     setView(value);
     setPage(1);
@@ -85,13 +98,17 @@ function ActivityDashboard() {
           <span className="font-mono text-xs uppercase tracking-wide text-muted-foreground">
             OIDC-linked identities
           </span>
+          <span className="text-xs text-muted-foreground">
+            {process.env.NEXT_PUBLIC_PORTAL_USE_MSW === "true" ? "Demo data · " : ""}Refreshes every
+            minute
+          </span>
         </div>
         <p className="text-sm text-muted-foreground">
           Sign-in activity for every linked identity. Pick a status below to filter the audit table.
         </p>
       </section>
       <Card>
-        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 px-4 py-3">
           <div className="flex flex-wrap items-center gap-3">
             <span className="font-mono text-xs uppercase text-muted-foreground">
               Activity window
@@ -142,11 +159,44 @@ function ActivityDashboard() {
                   data.total_users ? Math.round((counts[status] / data.total_users) * 100) : 0
                 }
                 detail={
-                  status === "active"
-                    ? `Signed in within ${windowDays} days`
-                    : status === "dormant"
-                      ? `No sign-in for ${windowDays}+ days`
-                      : "No recorded sign-in"
+                  status === "active" ? (
+                    <>
+                      Signed in within {windowDays} days
+                      {activeChange !== undefined ? (
+                        <>
+                          {" "}
+                          ·{" "}
+                          <span
+                            className={
+                              activeChange < 0
+                                ? "text-[color:var(--tone-error-fg)]"
+                                : activeChange > 0
+                                  ? "text-[color:var(--tone-ok-fg)]"
+                                  : undefined
+                            }
+                          >
+                            {activeChange > 0 ? "+" : ""}
+                            {activeChange}
+                          </span>{" "}
+                          vs prior {windowDays} days
+                        </>
+                      ) : null}
+                    </>
+                  ) : status === "dormant" ? (
+                    <>
+                      No sign-in for {windowDays}+ days
+                      {data.dormant_over_90_days !== undefined
+                        ? ` · ${data.dormant_over_90_days} over 90 days`
+                        : ""}
+                    </>
+                  ) : (
+                    <>
+                      No recorded sign-in
+                      {oldestAccountDays !== null
+                        ? ` · oldest account created ${oldestAccountDays} days ago`
+                        : ""}
+                    </>
+                  )
                 }
                 color={statusMeta[status].color}
                 selected={view === status}
@@ -158,10 +208,10 @@ function ActivityDashboard() {
           <LoginTrend analytics={data} />
         </>
       ) : null}
-      <Card className="gap-0" aria-labelledby="activity-audit-heading">
+      <Card className="gap-0 pb-0" aria-labelledby="activity-audit-heading">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b pb-4">
-          <div>
-            <CardTitle>
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <CardTitle className="text-lg">
               <h2 id="activity-audit-heading">User activity audit</h2>
             </CardTitle>
             <p className="text-xs text-muted-foreground">
@@ -174,7 +224,7 @@ function ActivityDashboard() {
           </div>
           <div className="flex w-full flex-wrap gap-3 sm:w-auto">
             <select
-              className="h-9 rounded-md border bg-background px-3 text-sm"
+              className="h-9 min-w-36 rounded-md border bg-background px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               aria-label="Filter users by status"
               value={view}
               onChange={(event) => changeView(event.target.value as ActivityView)}
@@ -184,13 +234,19 @@ function ActivityDashboard() {
               <option value="dormant">Dormant</option>
               <option value="never">Never signed in</option>
             </select>
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name or email"
-              aria-label="Search users"
-              className="w-full sm:w-64"
-            />
+            <div className="relative min-w-0 flex-1 sm:w-72">
+              <Search
+                aria-hidden="true"
+                className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+              />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search by name or email"
+                aria-label="Search users"
+                className="h-9 w-full pl-9"
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="px-0">

@@ -67,6 +67,39 @@ function dashboard() {
 }
 
 describe("activity dashboard", () => {
+  it("renders API summary details and recomputes the comparison when the window changes", async () => {
+    dashboard();
+    await screen.findByText("1–10 of 225");
+    const active = await screen.findByRole("button", { name: /^Active/ });
+    expect(active).toHaveTextContent("-25 vs prior 30 days");
+    expect(screen.getByRole("button", { name: /^Dormant/ })).toHaveTextContent("0 over 90 days");
+    expect(screen.getByRole("button", { name: /^Never signed in/ })).toHaveTextContent(
+      "oldest account created 324 days ago",
+    );
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Activity window" })).getByRole("button", {
+        name: "7 days",
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /^Active/ })).toHaveTextContent("vs prior 7 days"),
+    );
+  });
+  it("does not fabricate missing comparison or creation data from a legacy API", async () => {
+    fetcher.mockImplementation(async (input: string) => {
+      const url = new URL(input, "http://localhost");
+      const { prior_active_users, dormant_over_90_days, oldest_never_created_at, ...legacy } =
+        activityAnalytics(30);
+      return new Response(
+        JSON.stringify(url.pathname.endsWith("analytics") ? legacy : activityList(url)),
+        { headers: { "content-type": "application/json" } },
+      );
+    });
+    dashboard();
+    await screen.findByText("1–10 of 225");
+    expect(screen.queryByText(/vs prior/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/oldest account/)).not.toBeInTheDocument();
+  });
   it("uses server totals and requests page 21 without a 200-user ceiling", async () => {
     dashboard();
     expect(await screen.findByText("1–10 of 225")).toBeInTheDocument();

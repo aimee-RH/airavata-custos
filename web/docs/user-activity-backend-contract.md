@@ -90,3 +90,15 @@ The shared portal styling is unchanged from the target base. Only the Activity-s
 ## Baseline tooling limitations
 
 On upstream `5d840613`, API regeneration changes four core generated files for unrelated user/cluster-account contracts; this PR changes neither those inputs nor their generated outputs. `pnpm gen:api:check` therefore reports existing drift. Go test/vet pass; the Go build in this linked worktree needs `-buildvcs=false` because VCS discovery selects its non-repository parent. These are disclosed rather than bundled as unrelated fixes.
+
+### Role labels in the audit table
+
+Rows may include `role_names: string[]`, containing the user's actual assigned role display names (all roles if multiple). The frontend renders these after the email. Missing role data is omitted, never inferred from login activity or replaced with demo roles. An empty list means no assigned roles; absence means the backend has not supplied this field. The current backend follow-up must populate this field from real role assignments. Staff, Student and Researcher in MSW are preview fixtures only.
+
+## Summary-card supplemental metrics (2026-09-20)
+
+The aggregate analytics response now accepts `prior_active_users` (distinct OIDC users with a daily fact in the immediately preceding equal-length local-calendar window), `dormant_over_90_days` (the selected window's dormant users with inactivity strictly greater than 90 local days), and nullable `oldest_never_created_at` (earliest account creation among OIDC users with zero recorded logins). These values are aggregate server statistics, never computed from a paginated list or summed daily unique-user counts. Missing fields from an older server hide supplemental copy rather than becoming invented zeros.
+
+Custos has no invitation timestamp. The UI explicitly labels account creation, deriving elapsed whole days from `generated_at`; it does not call it an invitation. Both list and analytics queries refresh every 60 seconds while the page is visible. The local MSW preview is explicitly marked Demo data and uses deterministic fixture records.
+
+The corresponding backend implementation and OpenAPI additions are in the sibling `repo` checkout (backend feature branch). Deploy that implementation before claiming live supplemental metrics. The previously documented list/window contract dependencies remain separate and unresolved. No remote changes are included in this local update.

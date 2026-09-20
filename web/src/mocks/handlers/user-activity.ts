@@ -26,14 +26,21 @@ export const activityUsers = Array.from({ length: 225 }, (_, index) => {
   const events =
     days === null
       ? []
-      : Array.from({ length: 12 }, (_, offset) => ({
-          days: days + offset * 7,
-          count: 1 + (index % 3),
-        }));
+      : Array.from({ length: 12 }, (_, offset) => {
+          // Vary earlier visits across weekdays while preserving each user's last sign-in.
+          const eventDays = days + offset * 7 - (offset === 0 ? 0 : (index + offset) % 5);
+          const weekday = new Date(dateAt(eventDays)).getUTCDay();
+          return {
+            days: eventDays,
+            count: weekday === 0 || weekday === 6 ? 1 : 1 + (index % 3),
+          };
+        });
   return {
     user_id: `activity-${index}`,
     name: `Activity User ${String(index + 1).padStart(3, "0")}`,
     email: `activity${index + 1}@example.org`,
+    role_names: [["Staff"], ["Student"], ["Researcher"]][index % 3],
+    created_at: dateAt(100 + index),
     last_login: days === null ? null : dateAt(days),
     inactive_days: days,
     login_count: events.reduce((sum, event) => sum + event.count, 0),
@@ -57,6 +64,18 @@ export function activityAnalytics(windowDays: number, userID?: string) {
   });
   return {
     generated_at: NOW,
+    prior_active_users: users.filter((user) =>
+      user.events.some((event) => event.days >= windowDays && event.days < 2 * windowDays),
+    ).length,
+    dormant_over_90_days: users.filter(
+      (user) =>
+        user.inactive_days !== null && user.inactive_days >= windowDays && user.inactive_days > 90,
+    ).length,
+    oldest_never_created_at:
+      users
+        .filter((user) => user.last_login === null)
+        .map((user) => user.created_at)
+        .sort()[0] ?? null,
     window_days: windowDays,
     total_users: users.length,
     users_ever_logged_in: users.filter((user) => user.last_login !== null).length,

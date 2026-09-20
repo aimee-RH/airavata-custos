@@ -58,6 +58,7 @@ export function DaysRangePicker({
           type="button"
           size="sm"
           variant={!customOpen && value === days ? "brand" : "outline"}
+          aria-pressed={!customOpen && value === days}
           onClick={() => {
             setError("");
             setCustomOpen(false);
@@ -71,6 +72,7 @@ export function DaysRangePicker({
         type="button"
         size="sm"
         variant={customOpen ? "brand" : "outline"}
+        aria-pressed={customOpen}
         onClick={() => {
           setCustomOpen(true);
           setCustomDraft(String(value));
