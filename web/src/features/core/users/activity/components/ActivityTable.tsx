@@ -16,10 +16,10 @@
 // under the License.
 
 "use client";
+import { cn } from "@/lib/utils";
 import { Button } from "@/shared/ui/button";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
-import { ArrowDown, ArrowUp } from "lucide-react";
-import { formatLastLogin } from "../lib";
+import { ChevronDown, ChevronUp } from "lucide-react";
+import { activityStatus, formatCount, formatLastLogin, formatLastLoginDate } from "../lib";
 import type { ActivitySortKey, SortDirection, UserActivityRow } from "../schemas";
 import { ActivityStatus } from "./ActivityStatus";
 
@@ -48,116 +48,161 @@ export function ActivityTable({
   onPageSize: (size: number) => void;
   onSelect: (user: UserActivityRow) => void;
 }) {
-  function sortHeader(key: ActivitySortKey, label: string) {
+  function sortHeader(key: ActivitySortKey, label: string, align?: "right") {
+    const isSorted = sort === key;
     return (
-      <TableHead
-        aria-sort={sort === key ? (direction === "asc" ? "ascending" : "descending") : "none"}
+      <th
+        scope="col"
+        aria-sort={isSorted ? (direction === "asc" ? "ascending" : "descending") : "none"}
+        className={cn("px-4 py-3 font-medium", align === "right" && "text-right")}
       >
         <button
           type="button"
-          className="inline-flex items-center gap-1 rounded focus-visible:outline focus-visible:outline-2"
           onClick={() => onSort(key)}
+          className={cn(
+            "inline-flex items-center gap-1 rounded-sm text-xs font-medium uppercase tracking-wide text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+            align === "right" && "flex-row-reverse",
+          )}
         >
-          {label}
-          {sort === key ? (
+          <span>{label}</span>
+          {isSorted ? (
             direction === "asc" ? (
-              <ArrowUp size={12} aria-hidden />
+              <ChevronUp className="h-3.5 w-3.5 text-foreground" aria-hidden />
             ) : (
-              <ArrowDown size={12} aria-hidden />
+              <ChevronDown className="h-3.5 w-3.5 text-foreground" aria-hidden />
             )
           ) : null}
         </button>
-      </TableHead>
+      </th>
     );
   }
+
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const start = total === 0 ? 0 : (page - 1) * pageSize + 1;
+  const end = Math.min(total, page * pageSize);
+
   return (
     <>
-      <Table>
-        <caption className="sr-only">User login activity</caption>
-        <TableHeader>
-          <TableRow>
-            {sortHeader("name", "User")}
-            <TableHead>Status</TableHead>
-            {sortHeader("last_login", "Last sign-in")}
-            <TableHead className="text-right">In window</TableHead>
-            {sortHeader("login_count", "All time")}
-            <TableHead className="text-right">Action</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                No users match this view.
-              </TableCell>
-            </TableRow>
-          ) : (
-            rows.map((user) => (
-              <TableRow key={user.user_id}>
-                <TableCell>
-                  <p className="font-medium text-brand">{user.name}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
-                </TableCell>
-                <TableCell>
-                  <ActivityStatus user={user} windowDays={windowDays} />
-                </TableCell>
-                <TableCell>
-                  <span className="block">{formatLastLogin(user)}</span>
-                  <span className="block font-mono text-xs text-muted-foreground">
-                    {user.last_login
-                      ? `${new Date(user.last_login).toISOString().replace("T", " ").slice(0, 16)} UTC`
-                      : "No recorded sign-in"}
-                  </span>
-                </TableCell>
-                <TableCell className="text-right tabular-nums">{user.window_login_count}</TableCell>
-                <TableCell className="tabular-nums text-muted-foreground">
-                  {user.login_count}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => onSelect(user)}
-                    aria-label={`View activity for ${user.name}`}
-                  >
-                    View
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
-      <div className="flex flex-wrap items-center justify-between gap-3 border-t px-4 py-3 text-sm text-muted-foreground">
+      <div className="overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <caption className="sr-only">User login activity</caption>
+          <thead className="bg-muted text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            <tr>
+              {sortHeader("name", "User")}
+              <th scope="col" className="px-4 py-3 font-medium">
+                Status
+              </th>
+              {sortHeader("last_login", "Last sign-in")}
+              <th scope="col" className="px-4 py-3 text-right font-medium">
+                In window
+              </th>
+              {sortHeader("login_count", "All time", "right")}
+              <th scope="col" className="px-4 py-3 text-right font-medium">
+                Action
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
+                  No users match this view.
+                </td>
+              </tr>
+            ) : (
+              rows.map((user) => {
+                const status = activityStatus(user, windowDays);
+                const action = status === "dormant" ? "Review access" : "View";
+                const actionLabel =
+                  status === "dormant"
+                    ? `Review access for ${user.name}`
+                    : `View activity for ${user.name}`;
+                const windowCount = formatCount(user.window_login_count);
+                const lifetimeCount = formatCount(user.login_count);
+                return (
+                  <tr key={user.user_id} className="border-t border-border/60 bg-card">
+                    <td className="px-4 py-3 align-middle">
+                      <span className="block font-medium text-brand">{user.name}</span>
+                      <span className="block text-xs text-muted-foreground">{user.email}</span>
+                    </td>
+                    <td className="px-4 py-3 align-middle">
+                      <ActivityStatus user={user} windowDays={windowDays} />
+                    </td>
+                    <td className="px-4 py-3 align-middle">
+                      <span className="block">{formatLastLogin(user)}</span>
+                      <span className="block font-mono text-xs text-muted-foreground tabular-nums">
+                        {formatLastLoginDate(user)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-right align-middle tabular-nums">
+                      {windowCount ?? <span className="text-muted-foreground">—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right align-middle tabular-nums text-muted-foreground">
+                      {lifetimeCount ?? <span>—</span>}
+                    </td>
+                    <td className="px-4 py-3 text-right align-middle">
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => onSelect(user)}
+                        aria-label={actionLabel}
+                      >
+                        {action}
+                      </Button>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+      <div className="flex items-center justify-between border-t border-border/60 bg-card px-4 py-3 text-xs text-muted-foreground">
         <span>
-          {total === 0
-            ? "No users"
-            : `${(page - 1) * pageSize + 1}–${Math.min(page * pageSize, total)} of ${total}`}
+          {total === 0 ? "Showing 0–0 of 0" : `Showing ${start}–${end} of ${total}`}
         </span>
-        <div className="flex items-center gap-2">
-          <label>
-            Rows{" "}
-            <select
-              className="rounded border bg-background p-1"
-              aria-label="Rows per page"
-              value={pageSize}
-              onChange={(event) => onPageSize(Number(event.target.value))}
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <span>Rows per page</span>
+            <div className="relative">
+              <select
+                className="h-8 appearance-none rounded-md border border-border bg-background pl-2 pr-8 text-xs"
+                aria-label="Rows per page"
+                value={pageSize}
+                onChange={(event) => onPageSize(Number(event.target.value))}
+              >
+                <option value={10}>10</option>
+                <option value={15}>15</option>
+              </select>
+              <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 text-muted-foreground" />
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => onPage(page - 1)}
             >
-              <option value={10}>10</option>
-              <option value={15}>15</option>
-            </select>
-          </label>
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
-            Previous
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={page * pageSize >= total}
-            onClick={() => onPage(page + 1)}
-          >
-            Next
-          </Button>
+              Previous
+            </Button>
+            <span
+              aria-current="page"
+              className="inline-flex h-8 min-w-8 items-center justify-center rounded-md bg-primary px-3 text-[0.8rem] font-semibold text-primary-foreground"
+            >
+              {page}
+            </span>
+            <span className="text-muted-foreground">of {totalPages}</span>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => onPage(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
         </div>
       </div>
     </>

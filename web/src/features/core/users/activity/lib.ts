@@ -29,6 +29,27 @@ export function formatLastLogin(user: UserActivityRow) {
   if (user.inactive_days === 1) return "Yesterday";
   return `${user.inactive_days} days ago`;
 }
+
+export function formatLastLoginDate(user: UserActivityRow) {
+  if (user.last_login === null) return "Invited, no first sign-in";
+  return formatUtcDate(user.last_login, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+export function formatTrendLabel(date: string) {
+  return formatUtcDate(`${date}T00:00:00Z`, { month: "short", day: "numeric" });
+}
+
+function formatUtcDate(value: string, options: Intl.DateTimeFormatOptions) {
+  return new Intl.DateTimeFormat("en-US", { ...options, timeZone: "UTC" }).format(new Date(value));
+}
+
+export function formatCount(value: number) {
+  return value > 0 ? value : null;
+}
 export const statusMeta = {
   active: { label: "Active", color: "var(--custos-green-500)" },
   dormant: { label: "Dormant", color: "var(--custos-amber-500)" },

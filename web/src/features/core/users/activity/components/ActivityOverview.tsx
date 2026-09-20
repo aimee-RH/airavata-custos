@@ -30,7 +30,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { completeActivityTrend, statusMeta } from "../lib";
+import { completeActivityTrend, formatTrendLabel, statusMeta } from "../lib";
 import type { UserActivityAnalytics } from "../schemas";
 
 export function SummaryCard({
@@ -147,7 +147,7 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
   const windowDays = analytics.window_days;
   const data = completeActivityTrend(analytics).map((point) => ({
     date: point.date,
-    label: point.date.slice(5),
+    label: formatTrendLabel(point.date),
     loginSessions: point.login_count,
     activeUsers: point.active_users,
   }));
@@ -181,8 +181,8 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
       <CardContent>
         <div role="img" aria-label={`Sign-in trend for the last ${windowDays} days`}>
           {sessions === 0 ? (
-            <p className="flex h-40 items-center justify-center text-sm text-muted-foreground">
-              No sign-ins in this period.
+            <p className="flex h-[230px] items-center justify-center text-sm text-muted-foreground">
+              No sign-ins in this period
             </p>
           ) : (
             <ResponsiveContainer width="100%" height={280}>
@@ -227,5 +227,65 @@ export function LoginTrend({ analytics }: { analytics: UserActivityAnalytics }) 
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+export function DailyLoginActivity({
+  analytics,
+  userName,
+  neverLoggedIn,
+}: {
+  analytics: UserActivityAnalytics;
+  userName: string;
+  neverLoggedIn: boolean;
+}) {
+  const data = completeActivityTrend(analytics).map((point) => ({
+    date: point.date,
+    label: formatTrendLabel(point.date),
+    loginSessions: point.login_count,
+  }));
+  const sessions = data.reduce((total, point) => total + point.loginSessions, 0);
+  const labelInterval = Math.max(0, Math.ceil(analytics.window_days / 7) - 1);
+
+  return (
+    <div
+      role="img"
+      aria-label={`Login activity for ${userName} over ${analytics.window_days} days`}
+    >
+      {sessions === 0 ? (
+        <p className="flex h-[230px] items-center justify-center text-sm text-muted-foreground">
+          {neverLoggedIn ? "No login activity yet" : "No sign-ins in this period"}
+        </p>
+      ) : (
+        <ResponsiveContainer width="100%" height={230}>
+          <ComposedChart data={data} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="var(--custos-gray-100, var(--border))"
+              vertical={false}
+            />
+            <XAxis
+              dataKey="label"
+              interval={labelInterval}
+              tick={{ fontSize: 11 }}
+              stroke="var(--custos-gray-400, var(--muted-foreground))"
+            />
+            <YAxis
+              allowDecimals={false}
+              tick={{ fontSize: 11 }}
+              stroke="var(--custos-gray-400, var(--muted-foreground))"
+            />
+            <Tooltip labelFormatter={(_, payload) => payload[0]?.payload.date ?? ""} />
+            <Bar
+              isAnimationActive={false}
+              dataKey="loginSessions"
+              name="Login sessions"
+              fill="var(--custos-blue-500)"
+              radius={[3, 3, 0, 0]}
+            />
+          </ComposedChart>
+        </ResponsiveContainer>
+      )}
+    </div>
   );
 }

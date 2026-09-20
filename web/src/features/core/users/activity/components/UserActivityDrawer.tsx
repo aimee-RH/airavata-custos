@@ -33,7 +33,7 @@ import * as React from "react";
 import { formatLastLogin } from "../lib";
 import { useUserActivityAnalytics } from "../queries";
 import type { UserActivityRow } from "../schemas";
-import { LoginTrend } from "./ActivityOverview";
+import { DailyLoginActivity } from "./ActivityOverview";
 import { ActivityStatus } from "./ActivityStatus";
 import { DaysRangePicker } from "./DaysRangePicker";
 
@@ -41,9 +41,15 @@ export function UserActivityDrawer({
   user,
   initialWindow,
   onClose,
-}: { user: UserActivityRow; initialWindow: number; onClose: () => void }) {
+}: {
+  user: UserActivityRow;
+  initialWindow: number;
+  onClose: () => void;
+}) {
   const [windowDays, setWindowDays] = React.useState(initialWindow);
   const analytics = useUserActivityAnalytics(windowDays, user.user_id);
+  const last7 = useUserActivityAnalytics(7, user.user_id);
+  const last30 = useUserActivityAnalytics(30, user.user_id);
   return (
     <Drawer
       open
@@ -60,21 +66,19 @@ export function UserActivityDrawer({
           </DrawerDescription>
           <DrawerClose
             aria-label="Close user activity"
-            className="absolute right-4 top-4 rounded-md p-2 hover:bg-muted"
+            className="absolute right-4 top-4 rounded-md p-2 text-muted-foreground hover:bg-muted"
           >
-            <X size={16} />
+            <X className="h-4 w-4" aria-hidden="true" />
           </DrawerClose>
         </DrawerHeader>
         <div className="space-y-5 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <p className="font-display text-xl font-semibold">{user.name}</p>
+            <div>
+              <p className="font-display text-xl font-semibold">{user.name}</p>
+              <p className="text-sm text-muted-foreground">Individual login analytics</p>
+            </div>
             <ActivityStatus user={user} windowDays={initialWindow} />
           </div>
-          <DaysRangePicker
-            value={windowDays}
-            onChange={setWindowDays}
-            label="User analytics date range"
-          />
           {analytics.isPending ? (
             <Skeleton aria-label="Loading individual activity" className="h-64 w-full" />
           ) : analytics.error ? (
@@ -92,7 +96,7 @@ export function UserActivityDrawer({
                   icon={LogIn}
                 />
                 <KpiCard
-                  title={`Active days · ${windowDays}d`}
+                  title="Active days"
                   value={analytics.data.window_active_days}
                   icon={Activity}
                 />
@@ -102,18 +106,43 @@ export function UserActivityDrawer({
                   icon={Flame}
                 />
               </div>
-              <LoginTrend analytics={analytics.data} />
+              <Card>
+                <CardHeader className="gap-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <CardTitle>Daily login activity</CardTitle>
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        Login sessions for this user
+                      </p>
+                    </div>
+                    <DaysRangePicker
+                      value={windowDays}
+                      onChange={setWindowDays}
+                      label="User analytics date range"
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <DailyLoginActivity
+                    analytics={analytics.data}
+                    userName={user.name}
+                    neverLoggedIn={user.last_login === null}
+                  />
+                </CardContent>
+              </Card>
               <Card>
                 <CardHeader>
                   <CardTitle>Activity summary</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <dl className="grid grid-cols-[1fr_auto] gap-3 text-sm tabular-nums">
-                    <dt>Lifetime sign-ins</dt>
-                    <dd>{analytics.data.lifetime_login_count}</dd>
-                    <dt>Lifetime active days</dt>
-                    <dd>{analytics.data.lifetime_active_days}</dd>
-                    <dt>Dashboard activity window</dt>
+                  <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-3 text-sm tabular-nums">
+                    <dt className="text-muted-foreground">Last 7 days</dt>
+                    <dd>{last7.data ? `${last7.data.window_login_count} logins` : "—"}</dd>
+                    <dt className="text-muted-foreground">Last 30 days</dt>
+                    <dd>{last30.data ? `${last30.data.window_login_count} logins` : "—"}</dd>
+                    <dt className="text-muted-foreground">Lifetime</dt>
+                    <dd>{analytics.data.lifetime_login_count} logins</dd>
+                    <dt className="text-muted-foreground">Dashboard activity window</dt>
                     <dd>{initialWindow} days</dd>
                   </dl>
                 </CardContent>

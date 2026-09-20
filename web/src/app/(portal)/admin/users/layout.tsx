@@ -22,13 +22,16 @@ export default function AdminUsersLayout({ children }: { children: ReactNode }) 
   return (
     <UsersAdminProvider>
       <div className="space-y-4">
-        <header className="space-y-1 pb-4">
-          <h1 className="font-display text-[28px] font-bold leading-tight">
-            Users & Permissions
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Manage user accounts, roles, and the permissions each role grants.
-          </p>
+        <header className="flex flex-col gap-4 pb-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-3xl space-y-1">
+            <h1 className="font-display text-[28px] font-bold leading-tight">
+              Users & Permissions
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Manage user identities, access permissions, and roles across the portal. Control who
+              can access resources, configure role assignments, and audit identity records.
+            </p>
+          </div>
         </header>
         {children}
       </div>

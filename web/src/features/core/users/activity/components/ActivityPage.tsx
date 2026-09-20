@@ -21,6 +21,7 @@ import { ErrorState } from "@/shared/ui/ErrorState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
 import { Input } from "@/shared/ui/input";
 import { Skeleton } from "@/shared/ui/skeleton";
+import { Search } from "lucide-react";
 import * as React from "react";
 import { statusMeta } from "../lib";
 import { useUserActivity, useUserActivityAnalytics } from "../queries";
@@ -32,7 +33,14 @@ import { UserActivityDrawer } from "./UserActivityDrawer";
 
 export function ActivityPage() {
   const ability = useAbility();
-  if (ability.cannot("read", "UserActivity")) return <ErrorState message="Not permitted." />;
+  if (ability.cannot("read", "UserActivity")) {
+    return (
+      <ErrorState
+        heading="Not permitted"
+        message="Only site admins can access User Activity."
+      />
+    );
+  }
   return <ActivityDashboard />;
 }
 function ActivityDashboard() {
@@ -87,13 +95,14 @@ function ActivityDashboard() {
           </span>
         </div>
         <p className="text-sm text-muted-foreground">
-          Sign-in activity for every linked identity. Pick a status below to filter the audit table.
+          Sign-in activity for every identity in the portal. Pick a status below to filter the audit
+          table.
         </p>
       </section>
       <Card>
         <CardContent className="flex flex-wrap items-center justify-between gap-4 p-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="font-mono text-xs uppercase text-muted-foreground">
+          <div className="flex flex-wrap items-center gap-3 [&_fieldset>button]:font-bold">
+            <span className="font-mono text-xs font-normal uppercase tracking-wide text-muted-foreground">
               Activity window
             </span>
             <DaysRangePicker
@@ -107,8 +116,9 @@ function ActivityDashboard() {
             />
           </div>
           <p className="max-w-sm text-xs text-muted-foreground">
-            Active means a sign-in within the last {windowDays} user-local calendar days, including
-            today. Statuses and charts follow this window; All time is lifetime activity.
+            A user counts as{" "}
+            <span className="font-medium text-[color:var(--custos-green-700)]">Active</span> if they
+            signed in within this window. Every number, chart and row on this page follows it.
           </p>
         </CardContent>
       </Card>
@@ -143,10 +153,10 @@ function ActivityDashboard() {
                 }
                 detail={
                   status === "active"
-                    ? `Signed in within ${windowDays} days`
+                    ? `Signed in the last ${windowDays} days`
                     : status === "dormant"
                       ? `No sign-in for ${windowDays}+ days`
-                      : "No recorded sign-in"
+                      : "Invited, no first sign-in"
                 }
                 color={statusMeta[status].color}
                 selected={view === status}
@@ -160,21 +170,23 @@ function ActivityDashboard() {
       ) : null}
       <Card className="gap-0" aria-labelledby="activity-audit-heading">
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3 border-b pb-4">
-          <div>
-            <CardTitle>
-              <h2 id="activity-audit-heading">User activity audit</h2>
-            </CardTitle>
-            <p className="text-xs text-muted-foreground">
-              {users.error
-                ? "Activity unavailable"
-                : users.data
-                  ? `${users.data.total} matching identities`
-                  : "Loading identities"}
-            </p>
-          </div>
-          <div className="flex w-full flex-wrap gap-3 sm:w-auto">
+          <CardTitle>
+            <div className="flex items-baseline gap-2">
+              <h2 id="activity-audit-heading" className="font-display text-lg font-semibold">
+                User activity audit
+              </h2>
+              <span className="text-xs font-normal text-muted-foreground">
+                {users.error
+                  ? "Activity unavailable"
+                  : users.data
+                    ? `${users.data.total} of ${data?.total_users ?? users.data.total} identities`
+                    : "Loading identities"}
+              </span>
+            </div>
+          </CardTitle>
+          <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
             <select
-              className="h-9 rounded-md border bg-background px-3 text-sm"
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
               aria-label="Filter users by status"
               value={view}
               onChange={(event) => changeView(event.target.value as ActivityView)}
@@ -184,13 +196,16 @@ function ActivityDashboard() {
               <option value="dormant">Dormant</option>
               <option value="never">Never signed in</option>
             </select>
-            <Input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search by name or email"
-              aria-label="Search users"
-              className="w-full sm:w-64"
-            />
+            <div className="relative w-full sm:w-72">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Search by name or email"
+                aria-label="Search users"
+                className="pl-8"
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent className="px-0">
