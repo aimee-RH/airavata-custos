@@ -23,6 +23,7 @@ import { getUserActivity } from "../api";
 import { StatusComposition } from "../components/ActivityOverview";
 import { ActivityPage } from "../components/ActivityPage";
 import { ActivityStatus } from "../components/ActivityStatus";
+import { ActivityTable } from "../components/ActivityTable";
 import { DaysRangePicker } from "../components/DaysRangePicker";
 import {
   activityActionLabel,
@@ -78,7 +79,7 @@ describe("activity dashboard", () => {
     await screen.findByText("1–10 of 225");
     const active = await screen.findByRole("button", { name: /^Active/ });
     expect(active).toHaveTextContent("-25 vs prior 30 days");
-    expect(screen.getByRole("button", { name: /^Dormant/ })).toHaveTextContent("0 over 90 days");
+    expect(screen.getByRole("button", { name: /^Dormant/ })).toHaveTextContent("25 over 90 days");
     expect(screen.getByRole("button", { name: /^Never signed in/ })).toHaveTextContent(
       "oldest account created 324 days ago",
     );
@@ -129,9 +130,26 @@ describe("activity dashboard", () => {
     expect(screen.queryByText(/over 90 days/)).not.toBeInTheDocument();
     expect(screen.queryByText(/oldest account/)).not.toBeInTheDocument();
   });
-  it("hides the over-90-day subcount when the selected window is already longer", async () => {
+  it("hides a zero over-90-day subcount instead of showing 0 over 90 days", async () => {
+    fetcher.mockImplementation(async (input: string) => {
+      const url = new URL(input, "http://localhost");
+      return new Response(
+        JSON.stringify(
+          url.pathname.endsWith("analytics")
+            ? { ...activityAnalytics(30), dormant_over_90_days: 0 }
+            : activityList(url),
+        ),
+        { headers: { "content-type": "application/json" } },
+      );
+    });
     dashboard();
     await screen.findByText("1–10 of 225");
+    expect(screen.getByRole("button", { name: /^Dormant/ })).not.toHaveTextContent("over 90 days");
+  });
+  it("hides the over-90-day subcount when the selected window is 90 days or longer", async () => {
+    dashboard();
+    await screen.findByText("1–10 of 225");
+    expect(screen.getByRole("button", { name: /^Dormant/ })).toHaveTextContent("25 over 90 days");
     fireEvent.click(
       within(screen.getByRole("group", { name: "Activity window" })).getByRole("button", {
         name: "90 days",
@@ -139,20 +157,6 @@ describe("activity dashboard", () => {
     );
     await waitFor(() =>
       expect(screen.getByRole("button", { name: /^Active/ })).toHaveTextContent("vs prior 90 days"),
-    );
-    fireEvent.click(
-      within(screen.getByRole("group", { name: "Activity window" })).getByRole("button", {
-        name: "Custom",
-      }),
-    );
-    fireEvent.change(screen.getByLabelText("Activity window custom days"), {
-      target: { value: "120" },
-    });
-    fireEvent.blur(screen.getByLabelText("Activity window custom days"));
-    await waitFor(() =>
-      expect(screen.getByRole("button", { name: /^Active/ })).toHaveTextContent(
-        "vs prior 120 days",
-      ),
     );
     expect(screen.getByRole("button", { name: /^Dormant/ })).not.toHaveTextContent("over 90 days");
   });
@@ -189,6 +193,45 @@ describe("activity dashboard", () => {
     );
     expect(container.querySelector("[aria-hidden='true']")).not.toBeNull();
     expect(screen.getByText("Never signed in")).toBeInTheDocument();
+  });
+  it("omits the role suffix when role_names is missing or empty", () => {
+    const user = activityList(new URL("http://localhost")).items[0];
+    if (!user) throw new Error("Missing fixture row");
+    const noop = () => undefined;
+    const { rerender } = render(
+      <ActivityTable
+        rows={[{ ...user, email: "noroles@example.org", role_names: undefined }]}
+        total={1}
+        windowDays={30}
+        page={1}
+        pageSize={10}
+        sort="last_login"
+        direction="desc"
+        onSort={noop}
+        onPage={noop}
+        onPageSize={noop}
+        onSelect={noop}
+      />,
+    );
+    expect(screen.getByText("noroles@example.org")).toBeInTheDocument();
+    expect(screen.queryByText(/noroles@example.org ·/)).not.toBeInTheDocument();
+    rerender(
+      <ActivityTable
+        rows={[{ ...user, email: "noroles@example.org", role_names: [] }]}
+        total={1}
+        windowDays={30}
+        page={1}
+        pageSize={10}
+        sort="last_login"
+        direction="desc"
+        onSort={noop}
+        onPage={noop}
+        onPageSize={noop}
+        onSelect={noop}
+      />,
+    );
+    expect(screen.getByText("noroles@example.org")).toBeInTheDocument();
+    expect(screen.queryByText(/noroles@example.org ·/)).not.toBeInTheDocument();
   });
   it("uses server totals and requests page 21 without a 200-user ceiling", async () => {
     dashboard();

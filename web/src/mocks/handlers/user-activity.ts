@@ -22,7 +22,7 @@ import { http, HttpResponse } from "msw";
 const NOW = "2026-09-16T12:00:00Z";
 const dateAt = (days: number) => new Date(Date.parse(NOW) - days * 86_400_000).toISOString();
 export const activityUsers = Array.from({ length: 225 }, (_, index) => {
-  const days = [0, 1, 6, 7, 29, 30, 89, 90, null][index % 9] ?? null;
+  const days = [0, 1, 6, 7, 29, 30, 89, 120, null][index % 9] ?? null;
   const events =
     days === null
       ? []

@@ -81,7 +81,10 @@ function ActivityDashboard() {
       ? utcCalendarDaysBetween(data.generated_at, data.oldest_never_created_at)
       : null;
   const showDormantOver90 =
-    data !== undefined && hasOptionalCount(data.dormant_over_90_days) && windowDays <= 90;
+    data !== undefined &&
+    hasOptionalCount(data.dormant_over_90_days) &&
+    data.dormant_over_90_days > 0 &&
+    windowDays < 90;
   function changeView(value: ActivityView) {
     setView(value);
     setPage(1);

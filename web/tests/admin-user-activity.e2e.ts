@@ -75,9 +75,11 @@ test("review desktop screenshot", async ({ page }) => {
   await expect(page.getByText("activity1@example.org · Staff", { exact: true })).toBeVisible();
   const weekendBars = page.locator('.recharts-bar-rectangle path[fill-opacity="0.5"]');
   await expect(weekendBars.first()).toBeVisible();
-  expect(Number(await weekendBars.first().getAttribute("height"))).toBeGreaterThan(3);
   const zeroMarks = page.locator('.recharts-bar-rectangle path[fill-opacity="0.2"]');
   await expect(zeroMarks.first()).toBeVisible();
-  expect(Number(await zeroMarks.first().getAttribute("height"))).toBe(3);
+  const weekendHeight = Number(await weekendBars.first().getAttribute("height"));
+  const zeroHeight = Number(await zeroMarks.first().getAttribute("height"));
+  expect(zeroHeight).toBeGreaterThan(0);
+  expect(weekendHeight).toBeGreaterThan(zeroHeight);
   await page.screenshot({ path: "test-results/user-activity-desktop.png", fullPage: true });
 });

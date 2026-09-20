@@ -66,7 +66,7 @@ Optional supplemental fields, all nullable:
 - `dormant_over_90_days`: dormant users in the selected window whose inactivity is strictly greater than 90 local days
 - `oldest_never_created_at`: earliest account creation among OIDC users with zero recorded logins
 
-These are aggregate server statistics. Missing or `null` fields hide supplemental copy; they must not become invented zeros. The UI shows “vs prior N days” and “oldest account created N days ago” using UTC calendar-day difference from `generated_at`. The “over 90 days” subcount is hidden when the selected window is already longer than 90 days.
+These are aggregate server statistics. Missing or `null` fields hide supplemental copy; they must not become invented zeros. The UI shows “vs prior N days” and “oldest account created N days ago” using UTC calendar-day difference from `generated_at`. The “over 90 days” subcount is hidden when it is zero, or when the selected window is 90 days or longer (it would duplicate the Dormant total).
 
 Cards derive Active from `active_users`, Dormant from `users_ever_logged_in - active_users`, and Never from `total_users - users_ever_logged_in`. Trend dates are user-local date buckets. The frontend fills missing calendar dates with zeros, using the UTC date of `generated_at` for the nominal range, and preserves returned boundary dates.
 
