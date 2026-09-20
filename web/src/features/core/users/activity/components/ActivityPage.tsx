@@ -16,6 +16,7 @@
 // under the License.
 
 "use client";
+import { cn } from "@/lib/utils";
 import { useAbility } from "@/shared/casl/AbilityProvider";
 import { ErrorState } from "@/shared/ui/ErrorState";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/ui/card";
@@ -257,26 +258,33 @@ function ActivityDashboard() {
               onRetry={() => users.refetch()}
             />
           ) : users.data ? (
-            <ActivityTable
-              rows={users.data.items}
-              total={users.data.total}
-              windowDays={windowDays}
-              page={page}
-              pageSize={pageSize}
-              sort={sort}
-              direction={direction}
-              onSort={(key) => {
-                setSort(key);
-                setDirection(sort === key && direction === "asc" ? "desc" : "asc");
-                setPage(1);
-              }}
-              onPage={setPage}
-              onPageSize={(size) => {
-                setPageSize(size);
-                setPage(1);
-              }}
-              onSelect={setSelectedUser}
-            />
+            // Held-over rows stay readable but dimmed, so a slow page change
+            // never looks like fresh data for the page being requested.
+            <div
+              aria-busy={users.isPlaceholderData}
+              className={cn("transition-opacity", users.isPlaceholderData && "opacity-60")}
+            >
+              <ActivityTable
+                rows={users.data.items}
+                total={users.data.total}
+                windowDays={windowDays}
+                page={page}
+                pageSize={pageSize}
+                sort={sort}
+                direction={direction}
+                onSort={(key) => {
+                  setSort(key);
+                  setDirection(sort === key && direction === "asc" ? "desc" : "asc");
+                  setPage(1);
+                }}
+                onPage={setPage}
+                onPageSize={(size) => {
+                  setPageSize(size);
+                  setPage(1);
+                }}
+                onSelect={setSelectedUser}
+              />
+            </div>
           ) : null}
         </CardContent>
       </Card>

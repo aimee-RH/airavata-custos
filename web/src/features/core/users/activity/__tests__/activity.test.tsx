@@ -303,6 +303,20 @@ describe("activity dashboard", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await screen.findByText("1–10 of 225");
   });
+  it("keeps the current page on screen while the next page loads", async () => {
+    dashboard();
+    await screen.findByText("1–10 of 225");
+    const firstRow = screen.getByText("Activity User 001");
+    fetcher.mockImplementation(() => new Promise(() => {}));
+    fireEvent.click(screen.getByRole("button", { name: "Next" }));
+    // Swapping the table for a short skeleton collapses the page height and
+    // yanks the trend chart above it; paging keeps the same columns, so the
+    // rows stay put and only report that they are stale.
+    expect(screen.getByRole("table")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Loading activity table")).not.toBeInTheDocument();
+    expect(firstRow).toBeInTheDocument();
+    expect(screen.getByRole("table").closest("[aria-busy]")).toHaveAttribute("aria-busy", "true");
+  });
   it("does not show previous-window rows while the next request is pending", async () => {
     dashboard();
     await screen.findByText("1–10 of 225");
