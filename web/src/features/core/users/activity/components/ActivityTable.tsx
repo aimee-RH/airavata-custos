@@ -19,7 +19,7 @@
 import { Button } from "@/shared/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/shared/ui/table";
 import { ArrowDown, ArrowUp } from "lucide-react";
-import { activityStatus, formatLastLogin } from "../lib";
+import { activityActionLabel, formatLastLogin } from "../lib";
 import type { ActivitySortKey, SortDirection, UserActivityRow } from "../schemas";
 import { ActivityStatus } from "./ActivityStatus";
 
@@ -94,8 +94,7 @@ export function ActivityTable({
             </TableRow>
           ) : (
             rows.map((user) => {
-              const status = activityStatus(user, windowDays);
-              const reviewAccess = status === "dormant" || status === "never";
+              const reviewAccess = activityActionLabel(user, windowDays) === "Review access";
               return (
                 <TableRow key={user.user_id}>
                   <TableCell>

@@ -22,8 +22,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getUserActivity } from "../api";
 import { StatusComposition } from "../components/ActivityOverview";
 import { ActivityPage } from "../components/ActivityPage";
+import { ActivityStatus } from "../components/ActivityStatus";
 import { DaysRangePicker } from "../components/DaysRangePicker";
-import { activityStatus, formatLastLogin } from "../lib";
+import {
+  activityActionLabel,
+  activityStatus,
+  formatLastLogin,
+  utcCalendarDaysBetween,
+} from "../lib";
 
 const state = vi.hoisted(() => ({ allowed: true }));
 vi.mock("@/shared/casl/AbilityProvider", () => ({
@@ -99,6 +105,90 @@ describe("activity dashboard", () => {
     await screen.findByText("1–10 of 225");
     expect(screen.queryByText(/vs prior/)).not.toBeInTheDocument();
     expect(screen.queryByText(/oldest account/)).not.toBeInTheDocument();
+  });
+  it("does not fabricate null comparison or creation data", async () => {
+    fetcher.mockImplementation(async (input: string) => {
+      const url = new URL(input, "http://localhost");
+      return new Response(
+        JSON.stringify(
+          url.pathname.endsWith("analytics")
+            ? {
+                ...activityAnalytics(30),
+                prior_active_users: null,
+                dormant_over_90_days: null,
+                oldest_never_created_at: null,
+              }
+            : activityList(url),
+        ),
+        { headers: { "content-type": "application/json" } },
+      );
+    });
+    dashboard();
+    await screen.findByText("1–10 of 225");
+    expect(screen.queryByText(/vs prior/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/over 90 days/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/oldest account/)).not.toBeInTheDocument();
+  });
+  it("hides the over-90-day subcount when the selected window is already longer", async () => {
+    dashboard();
+    await screen.findByText("1–10 of 225");
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Activity window" })).getByRole("button", {
+        name: "90 days",
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /^Active/ })).toHaveTextContent("vs prior 90 days"),
+    );
+    fireEvent.click(
+      within(screen.getByRole("group", { name: "Activity window" })).getByRole("button", {
+        name: "Custom",
+      }),
+    );
+    fireEvent.change(screen.getByLabelText("Activity window custom days"), {
+      target: { value: "120" },
+    });
+    fireEvent.blur(screen.getByLabelText("Activity window custom days"));
+    await waitFor(() =>
+      expect(screen.getByRole("button", { name: /^Active/ })).toHaveTextContent(
+        "vs prior 120 days",
+      ),
+    );
+    expect(screen.getByRole("button", { name: /^Dormant/ })).not.toHaveTextContent("over 90 days");
+  });
+  it("opens Review access as an engagement audit, not an IAM panel", async () => {
+    dashboard();
+    await screen.findByText("1–10 of 225");
+    fireEvent.change(screen.getByLabelText("Filter users by status"), {
+      target: { value: "never" },
+    });
+    await screen.findByText("1–10 of 25");
+    const reviewButtons = await screen.findAllByRole("button", { name: /Review access for/ });
+    const reviewButton = reviewButtons[0];
+    if (!reviewButton) throw new Error("Missing Review access action");
+    fireEvent.click(reviewButton);
+    expect(await screen.findByRole("dialog")).toHaveTextContent("Review access");
+    expect(screen.getByRole("dialog")).toHaveTextContent(
+      "Sign-in activity only; this does not change roles or cluster access.",
+    );
+    expect(await screen.findByText("Lifetime active days")).toBeInTheDocument();
+  });
+  it("renders status dots for dormant and never-signed-in pills", () => {
+    const user = activityList(new URL("http://localhost")).items[0];
+    if (!user) throw new Error("Missing fixture row");
+    const { rerender, container } = render(
+      <ActivityStatus
+        user={{ ...user, last_login: "2026-08-01T12:00:00Z", inactive_days: 30 }}
+        windowDays={30}
+      />,
+    );
+    expect(container.querySelector("[aria-hidden='true']")).not.toBeNull();
+    expect(screen.getByText("Dormant")).toBeInTheDocument();
+    rerender(
+      <ActivityStatus user={{ ...user, last_login: null, inactive_days: null }} windowDays={30} />,
+    );
+    expect(container.querySelector("[aria-hidden='true']")).not.toBeNull();
+    expect(screen.getByText("Never signed in")).toBeInTheDocument();
   });
   it("uses server totals and requests page 21 without a 200-user ceiling", async () => {
     dashboard();
@@ -237,6 +327,14 @@ it("uses server-local calendar days at the exact inactivity boundary", () => {
   expect(formatLastLogin({ ...user, inactive_days: -1 })).toBe("Today");
   expect(activityStatus({ ...user, inactive_days: 7 }, 7)).toBe("dormant");
   expect(activityStatus({ ...user, last_login: null, inactive_days: null }, 7)).toBe("never");
+  expect(activityActionLabel({ ...user, last_login: null, inactive_days: null }, 30)).toBe(
+    "Review access",
+  );
+  expect(activityActionLabel({ ...user, inactive_days: 0 }, 30)).toBe("View");
+});
+it("counts oldest-account age in UTC calendar days, not elapsed hours", () => {
+  expect(utcCalendarDaysBetween("2026-09-16T00:30:00Z", "2026-09-15T23:30:00Z")).toBe(1);
+  expect(utcCalendarDaysBetween("2026-09-16T12:00:00Z", "2025-10-27T12:00:00Z")).toBe(324);
 });
 it("validates custom days without submitting invalid values", () => {
   const onChange = vi.fn();

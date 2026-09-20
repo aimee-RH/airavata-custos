@@ -15,30 +15,29 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import { StatusBadge } from "@/shared/ui/StatusBadge";
+import { StatusBadge, type StatusBadgeVariant } from "@/shared/ui/StatusBadge";
 import { activityStatus } from "../lib";
 import type { UserActivityRow } from "../schemas";
+
+function ActivityPill({
+  variant,
+  label,
+}: {
+  variant: StatusBadgeVariant;
+  label?: string;
+}) {
+  return (
+    <StatusBadge variant={variant} label={label} dot className="[&>span:first-child]:size-1.5" />
+  );
+}
+
 export function ActivityStatus({
   user,
   windowDays,
 }: { user: UserActivityRow; windowDays: number }) {
   const status = activityStatus(user, windowDays);
-  if (status === "active")
-    return <StatusBadge variant="active" className="[&>span:first-child]:size-1.5" />;
-  if (status === "dormant")
-    return (
-      <StatusBadge
-        variant="warning"
-        label="Dormant"
-        className="before:size-1.5 before:rounded-full before:bg-current"
-      />
-    );
-  if (status === "unknown") return <StatusBadge variant="inactive" label="Unknown" />;
-  return (
-    <StatusBadge
-      variant="deleted"
-      label="Never signed in"
-      className="before:size-1.5 before:rounded-full before:bg-current"
-    />
-  );
+  if (status === "active") return <ActivityPill variant="active" />;
+  if (status === "dormant") return <ActivityPill variant="warning" label="Dormant" />;
+  if (status === "unknown") return <ActivityPill variant="inactive" label="Unknown" />;
+  return <ActivityPill variant="deleted" label="Never signed in" />;
 }

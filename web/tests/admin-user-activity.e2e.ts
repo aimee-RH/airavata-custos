@@ -45,6 +45,9 @@ test("activity dashboard, filters, pagination and drawer", async ({ page }) => {
   await expect(page.getByText("1–1 of 1")).toBeVisible();
   await page.getByRole("button", { name: "Review access for Activity User 004" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByRole("dialog")).toContainText(
+    "Sign-in activity only; this does not change roles or cluster access.",
+  );
   await expect(page.getByText("Lifetime active days")).toBeVisible();
   await page.getByLabel("Close user activity").click();
   await expect(page.getByRole("dialog")).not.toBeVisible();

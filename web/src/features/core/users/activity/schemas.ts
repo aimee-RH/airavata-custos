@@ -18,6 +18,7 @@
 import { z } from "zod";
 
 const count = z.number().int().nonnegative();
+const optionalCount = count.nullish();
 export const activityViewSchema = z.enum(["all", "active", "dormant", "never"]);
 export type ActivityView = z.infer<typeof activityViewSchema>;
 export type ActivitySortKey = "name" | "last_login" | "login_count";
@@ -26,7 +27,11 @@ export const userActivityRowSchema = z.object({
   user_id: z.string(),
   name: z.string(),
   email: z.string(),
-  role_names: z.array(z.string().min(1)).optional(),
+  role_names: z
+    .array(z.string().min(1))
+    .nullable()
+    .optional()
+    .transform((names) => names ?? undefined),
   last_login: z.string().datetime({ offset: true }).nullable(),
   inactive_days: z.number().int().nullable(),
   login_count: count,
@@ -54,9 +59,9 @@ export const userActivityAnalyticsSchema = z
     total_users: count,
     users_ever_logged_in: count,
     active_users: count,
-    prior_active_users: count.optional(),
-    dormant_over_90_days: count.optional(),
-    oldest_never_created_at: z.string().datetime({ offset: true }).nullable().optional(),
+    prior_active_users: optionalCount,
+    dormant_over_90_days: optionalCount,
+    oldest_never_created_at: z.string().datetime({ offset: true }).nullish(),
     lifetime_login_count: count,
     lifetime_active_days: count,
     window_login_count: count,

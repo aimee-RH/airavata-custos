@@ -22,6 +22,25 @@ export function activityStatus(user: UserActivityRow, windowDays: number) {
   if (user.inactive_days === null) return "unknown";
   return user.inactive_days < windowDays ? "active" : "dormant";
 }
+export function hasOptionalCount(value: number | null | undefined): value is number {
+  return typeof value === "number";
+}
+export function utcCalendarDaysBetween(laterISO: string, earlierISO: string) {
+  const later = new Date(laterISO);
+  const earlier = new Date(earlierISO);
+  if (Number.isNaN(later.getTime()) || Number.isNaN(earlier.getTime())) return 0;
+  const laterUTC = Date.UTC(later.getUTCFullYear(), later.getUTCMonth(), later.getUTCDate());
+  const earlierUTC = Date.UTC(
+    earlier.getUTCFullYear(),
+    earlier.getUTCMonth(),
+    earlier.getUTCDate(),
+  );
+  return Math.max(0, Math.round((laterUTC - earlierUTC) / 86_400_000));
+}
+export function activityActionLabel(user: UserActivityRow, windowDays: number) {
+  const status = activityStatus(user, windowDays);
+  return status === "dormant" || status === "never" ? "Review access" : "View";
+}
 export function formatLastLogin(user: UserActivityRow) {
   if (user.last_login === null) return "Never";
   if (user.inactive_days === null) return "Date unavailable";

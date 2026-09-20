@@ -30,7 +30,7 @@ import {
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Activity, CalendarDays, Flame, LogIn, X } from "lucide-react";
 import * as React from "react";
-import { formatLastLogin } from "../lib";
+import { activityActionLabel, formatLastLogin } from "../lib";
 import { useUserActivityAnalytics } from "../queries";
 import type { UserActivityRow } from "../schemas";
 import { LoginTrend } from "./ActivityOverview";
@@ -44,6 +44,7 @@ export function UserActivityDrawer({
 }: { user: UserActivityRow; initialWindow: number; onClose: () => void }) {
   const [windowDays, setWindowDays] = React.useState(initialWindow);
   const analytics = useUserActivityAnalytics(windowDays, user.user_id);
+  const reviewAccess = activityActionLabel(user, initialWindow) === "Review access";
   return (
     <Drawer
       open
@@ -54,9 +55,12 @@ export function UserActivityDrawer({
     >
       <DrawerContent className="w-[min(94vw,760px)] overflow-y-auto sm:max-w-[760px]">
         <DrawerHeader className="border-b pr-16">
-          <DrawerTitle>User engagement audit</DrawerTitle>
+          <DrawerTitle>{reviewAccess ? "Review access" : "User engagement audit"}</DrawerTitle>
           <DrawerDescription>
             {user.name} · {user.email}
+            {reviewAccess
+              ? ". Sign-in activity only; this does not change roles or cluster access."
+              : ""}
           </DrawerDescription>
           <DrawerClose
             aria-label="Close user activity"

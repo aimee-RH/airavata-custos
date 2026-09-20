@@ -23,7 +23,7 @@ import { Input } from "@/shared/ui/input";
 import { Skeleton } from "@/shared/ui/skeleton";
 import { Search } from "lucide-react";
 import * as React from "react";
-import { statusMeta } from "../lib";
+import { hasOptionalCount, statusMeta, utcCalendarDaysBetween } from "../lib";
 import { useUserActivity, useUserActivityAnalytics } from "../queries";
 import type { ActivitySortKey, ActivityView, SortDirection, UserActivityRow } from "../schemas";
 import { LoginTrend, StatusComposition, SummaryCard } from "./ActivityOverview";
@@ -73,17 +73,15 @@ function ActivityDashboard() {
       }
     : null;
   const activeChange =
-    data?.prior_active_users === undefined
-      ? undefined
-      : data.active_users - data.prior_active_users;
-  const oldestAccountDays = data?.oldest_never_created_at
-    ? Math.max(
-        0,
-        Math.floor(
-          (Date.parse(data.generated_at) - Date.parse(data.oldest_never_created_at)) / 86_400_000,
-        ),
-      )
-    : null;
+    data && hasOptionalCount(data.prior_active_users)
+      ? data.active_users - data.prior_active_users
+      : undefined;
+  const oldestAccountDays =
+    data?.oldest_never_created_at != null
+      ? utcCalendarDaysBetween(data.generated_at, data.oldest_never_created_at)
+      : null;
+  const showDormantOver90 =
+    data !== undefined && hasOptionalCount(data.dormant_over_90_days) && windowDays <= 90;
   function changeView(value: ActivityView) {
     setView(value);
     setPage(1);
@@ -185,9 +183,7 @@ function ActivityDashboard() {
                   ) : status === "dormant" ? (
                     <>
                       No sign-in for {windowDays}+ days
-                      {data.dormant_over_90_days !== undefined
-                        ? ` · ${data.dormant_over_90_days} over 90 days`
-                        : ""}
+                      {showDormantOver90 ? ` · ${data.dormant_over_90_days} over 90 days` : ""}
                     </>
                   ) : (
                     <>
