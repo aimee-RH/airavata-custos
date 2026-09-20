@@ -35,10 +35,7 @@ export function ActivityPage() {
   const ability = useAbility();
   if (ability.cannot("read", "UserActivity")) {
     return (
-      <ErrorState
-        heading="Not permitted"
-        message="Only site admins can access User Activity."
-      />
+      <ErrorState heading="Not permitted" message="Only site admins can access User Activity." />
     );
   }
   return <ActivityDashboard />;

@@ -159,9 +159,7 @@ export function ActivityTable({
         </table>
       </div>
       <div className="flex items-center justify-between border-t border-border/60 bg-card px-4 py-3 text-xs text-muted-foreground">
-        <span>
-          {total === 0 ? "Showing 0–0 of 0" : `Showing ${start}–${end} of ${total}`}
-        </span>
+        <span>{total === 0 ? "Showing 0–0 of 0" : `Showing ${start}–${end} of ${total}`}</span>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-2">
             <span>Rows per page</span>

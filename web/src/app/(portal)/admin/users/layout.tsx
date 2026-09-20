@@ -15,8 +15,8 @@
 // specific language governing permissions and limitations
 // under the License.
 
-import type { ReactNode } from "react";
 import { UsersAdminProvider } from "@/shared/users-admin/UsersAdminContext";
+import type { ReactNode } from "react";
 
 export default function AdminUsersLayout({ children }: { children: ReactNode }) {
   return (

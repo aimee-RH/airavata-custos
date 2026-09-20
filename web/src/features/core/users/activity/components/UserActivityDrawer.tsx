@@ -79,76 +79,70 @@ export function UserActivityDrawer({
             </div>
             <ActivityStatus user={user} windowDays={initialWindow} />
           </div>
-          {analytics.isPending ? (
-            <Skeleton aria-label="Loading individual activity" className="h-64 w-full" />
-          ) : analytics.error ? (
-            <ErrorState
-              message="We couldn't load this user's activity."
-              onRetry={() => analytics.refetch()}
+          <div className="grid gap-3 sm:grid-cols-2">
+            <KpiCard title="Last login" value={formatLastLogin(user)} icon={CalendarDays} />
+            <KpiCard
+              title={`Logins · ${windowDays}d`}
+              value={analytics.data?.window_login_count ?? "—"}
+              loading={analytics.isPending}
+              icon={LogIn}
             />
-          ) : analytics.data ? (
-            <>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <KpiCard title="Last login" value={formatLastLogin(user)} icon={CalendarDays} />
-                <KpiCard
-                  title={`Logins · ${windowDays}d`}
-                  value={analytics.data.window_login_count}
-                  icon={LogIn}
-                />
-                <KpiCard
-                  title="Active days"
-                  value={analytics.data.window_active_days}
-                  icon={Activity}
-                />
-                <KpiCard
-                  title="Current login streak"
-                  value={`${user.current_streak}d`}
-                  icon={Flame}
+            <KpiCard
+              title="Active days"
+              value={analytics.data?.window_active_days ?? "—"}
+              loading={analytics.isPending}
+              icon={Activity}
+            />
+            <KpiCard title="Current login streak" value={`${user.current_streak}d`} icon={Flame} />
+          </div>
+          <Card>
+            <CardHeader className="gap-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <CardTitle>Daily login activity</CardTitle>
+                  <p className="mt-1 text-sm text-muted-foreground">Login sessions for this user</p>
+                </div>
+                <DaysRangePicker
+                  value={windowDays}
+                  onChange={setWindowDays}
+                  label="User analytics date range"
                 />
               </div>
-              <Card>
-                <CardHeader className="gap-3">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
-                      <CardTitle>Daily login activity</CardTitle>
-                      <p className="mt-1 text-sm text-muted-foreground">
-                        Login sessions for this user
-                      </p>
-                    </div>
-                    <DaysRangePicker
-                      value={windowDays}
-                      onChange={setWindowDays}
-                      label="User analytics date range"
-                    />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <DailyLoginActivity
-                    analytics={analytics.data}
-                    userName={user.name}
-                    neverLoggedIn={user.last_login === null}
-                  />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle>Activity summary</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-3 text-sm tabular-nums">
-                    <dt className="text-muted-foreground">Last 7 days</dt>
-                    <dd>{last7.data ? `${last7.data.window_login_count} logins` : "—"}</dd>
-                    <dt className="text-muted-foreground">Last 30 days</dt>
-                    <dd>{last30.data ? `${last30.data.window_login_count} logins` : "—"}</dd>
-                    <dt className="text-muted-foreground">Lifetime</dt>
-                    <dd>{analytics.data.lifetime_login_count} logins</dd>
-                    <dt className="text-muted-foreground">Dashboard activity window</dt>
-                    <dd>{initialWindow} days</dd>
-                  </dl>
-                </CardContent>
-              </Card>
-            </>
-          ) : null}
+            </CardHeader>
+            <CardContent>
+              {analytics.isPending ? (
+                <Skeleton aria-label="Loading individual activity" className="h-[230px] w-full" />
+              ) : analytics.error ? (
+                <ErrorState
+                  message="We couldn't load this user's activity."
+                  onRetry={() => analytics.refetch()}
+                />
+              ) : analytics.data ? (
+                <DailyLoginActivity
+                  analytics={analytics.data}
+                  userName={user.name}
+                  neverLoggedIn={user.last_login === null}
+                />
+              ) : null}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Activity summary</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-3 text-sm tabular-nums">
+                <dt className="text-muted-foreground">Last 7 days</dt>
+                <dd>{last7.data ? `${last7.data.window_login_count} logins` : "—"}</dd>
+                <dt className="text-muted-foreground">Last 30 days</dt>
+                <dd>{last30.data ? `${last30.data.window_login_count} logins` : "—"}</dd>
+                <dt className="text-muted-foreground">Lifetime</dt>
+                <dd>{analytics.data ? `${analytics.data.lifetime_login_count} logins` : "—"}</dd>
+                <dt className="text-muted-foreground">Dashboard activity window</dt>
+                <dd>{initialWindow} days</dd>
+              </dl>
+            </CardContent>
+          </Card>
         </div>
       </DrawerContent>
     </Drawer>
