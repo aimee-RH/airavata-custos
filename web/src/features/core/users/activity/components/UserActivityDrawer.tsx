@@ -58,7 +58,7 @@ export function UserActivityDrawer({
       }}
       direction="right"
     >
-      <DrawerContent className="w-[min(94vw,760px)] overflow-y-auto sm:max-w-[760px]">
+      <DrawerContent className="w-[min(94vw,760px)] overflow-y-auto data-[vaul-drawer-direction=right]:w-[min(94vw,760px)] data-[vaul-drawer-direction=right]:sm:max-w-[760px]">
         <DrawerHeader className="border-b pr-16">
           <DrawerTitle>User engagement audit</DrawerTitle>
           <DrawerDescription>

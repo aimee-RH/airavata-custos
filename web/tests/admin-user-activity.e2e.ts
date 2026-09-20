@@ -60,4 +60,11 @@ test("review desktop screenshot", async ({ page }) => {
   await page.goto("/admin/users/activity");
   await expect(page.getByText("Showing 1–10 of 225")).toBeVisible();
   await page.screenshot({ path: "test-results/user-activity-desktop.png", fullPage: true });
+  await page
+    .getByRole("button", { name: /View activity for/ })
+    .first()
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByText("Daily login activity")).toBeVisible();
+  await page.screenshot({ path: "test-results/user-activity-drawer.png" });
 });
