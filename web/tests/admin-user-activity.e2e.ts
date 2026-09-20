@@ -21,21 +21,22 @@ import { signInAs } from "./fixtures/auth";
 test("activity dashboard, filters, pagination and drawer", async ({ page }) => {
   await signInAs(page, "admin");
   await page.goto("/admin/users/activity");
-  await expect(page.getByText("1–10 of 225")).toBeVisible();
+  await expect(page.getByText("Showing 1–10 of 225")).toBeVisible();
   await page.getByRole("button", { name: "Next", exact: true }).click();
-  await expect(page.getByText("11–20 of 225")).toBeVisible();
+  await expect(page.getByText("Showing 11–20 of 225")).toBeVisible();
   await page.getByLabel("Filter users by status").selectOption("dormant");
-  await expect(page.getByText("1–10 of 75")).toBeVisible();
+  await expect(page.getByText("Showing 1–10 of 75")).toBeVisible();
   await page
     .getByRole("group", { name: "Activity window", exact: true })
     .getByRole("button", { name: "7 days", exact: true })
     .click();
-  await expect(page.getByText("1–10 of 125")).toBeVisible();
+  await expect(page.getByText("Showing 1–10 of 125")).toBeVisible();
   await page.getByLabel("Search users").fill("activity4@example.org");
-  await expect(page.getByText("1–1 of 1")).toBeVisible();
-  await page.getByRole("button", { name: "View activity for Activity User 004" }).click();
+  await expect(page.getByText("Showing 1–1 of 1")).toBeVisible();
+  await page.getByRole("button", { name: "Review access for Activity User 004" }).click();
   await expect(page.getByRole("dialog")).toBeVisible();
-  await expect(page.getByText("Lifetime active days")).toBeVisible();
+  await expect(page.getByText("Daily login activity")).toBeVisible();
+  await expect(page.getByText("Activity summary")).toBeVisible();
   await page.getByLabel("Close user activity").click();
   await expect(page.getByRole("dialog")).not.toBeVisible();
 });
@@ -47,7 +48,8 @@ test("users:read alone cannot open activity or fetch its data", async ({ page })
     if (request.url().includes("/api/v1/users/activity")) activityRequests.push(request.url());
   });
   await page.goto("/admin/users/activity");
-  await expect(page.getByText("Not permitted.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Not permitted" })).toBeVisible();
+  await expect(page.getByText("Only site admins can access User Activity.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Activity", exact: true })).not.toBeVisible();
   expect(activityRequests).toEqual([]);
 });
@@ -56,6 +58,13 @@ test("review desktop screenshot", async ({ page }) => {
   await signInAs(page, "admin");
   await page.setViewportSize({ width: 1440, height: 1700 });
   await page.goto("/admin/users/activity");
-  await expect(page.getByText("1–10 of 225")).toBeVisible();
+  await expect(page.getByText("Showing 1–10 of 225")).toBeVisible();
   await page.screenshot({ path: "test-results/user-activity-desktop.png", fullPage: true });
+  await page
+    .getByRole("button", { name: /View activity for/ })
+    .first()
+    .click();
+  await expect(page.getByRole("dialog")).toBeVisible();
+  await expect(page.getByText("Daily login activity")).toBeVisible();
+  await page.screenshot({ path: "test-results/user-activity-drawer.png" });
 });

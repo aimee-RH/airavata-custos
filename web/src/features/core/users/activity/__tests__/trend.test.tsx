@@ -121,13 +121,18 @@ it("passes zero-filled points to the actual chart boundary", () => {
   render(<LoginTrend analytics={analytics()} />);
   const rows = JSON.parse(screen.getByTestId("chart-data").textContent ?? "[]");
   expect(rows).toHaveLength(10);
-  expect(rows[4]).toEqual({ date: "2026-09-05", label: "09-05", loginSessions: 0, activeUsers: 0 });
+  expect(rows[4]).toEqual({
+    date: "2026-09-05",
+    label: "Sep 5",
+    loginSessions: 0,
+    activeUsers: 0,
+  });
 });
 it.each([{ trend: [] }, { trend: [{ date: "2026-09-10", login_count: 0, active_users: 0 }] }])(
   "shows an empty state for an all-zero trend",
   ({ trend }) => {
     render(<LoginTrend analytics={analytics({ trend })} />);
-    expect(screen.getByText("No sign-ins in this period.")).toBeInTheDocument();
+    expect(screen.getByText("No sign-ins in this period")).toBeInTheDocument();
     expect(screen.queryByTestId("chart-data")).not.toBeInTheDocument();
     expect(screen.queryByText(/peak 0/)).not.toBeInTheDocument();
   },

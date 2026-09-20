@@ -23,7 +23,7 @@ import { getUserActivity } from "../api";
 import { StatusComposition } from "../components/ActivityOverview";
 import { ActivityPage } from "../components/ActivityPage";
 import { DaysRangePicker } from "../components/DaysRangePicker";
-import { activityStatus, formatLastLogin } from "../lib";
+import { activityStatus, formatLastLogin, formatLastLoginDate } from "../lib";
 
 const state = vi.hoisted(() => ({ allowed: true }));
 vi.mock("@/shared/casl/AbilityProvider", () => ({
@@ -69,32 +69,32 @@ function dashboard() {
 describe("activity dashboard", () => {
   it("uses server totals and requests page 21 without a 200-user ceiling", async () => {
     dashboard();
-    expect(await screen.findByText("1–10 of 225")).toBeInTheDocument();
+    expect(await screen.findByText("Showing 1–10 of 225")).toBeInTheDocument();
     for (let page = 2; page <= 21; page++) {
       fireEvent.click(screen.getByRole("button", { name: "Next" }));
-      await screen.findByText(`${(page - 1) * 10 + 1}–${page * 10} of 225`);
+      await screen.findByText(`Showing ${(page - 1) * 10 + 1}–${page * 10} of 225`);
     }
     expect(fetcher.mock.calls.some(([url]) => String(url).includes("offset=200"))).toBe(true);
   });
   it("sends status, window and debounced search to the server and resets pagination", async () => {
     dashboard();
-    await screen.findByText("1–10 of 225");
+    await screen.findByText("Showing 1–10 of 225");
     fireEvent.click(screen.getByRole("button", { name: "Next" }));
-    await screen.findByText("11–20 of 225");
+    await screen.findByText("Showing 11–20 of 225");
     fireEvent.change(screen.getByLabelText("Filter users by status"), {
       target: { value: "dormant" },
     });
-    await screen.findByText("1–10 of 75");
+    await screen.findByText("Showing 1–10 of 75");
     fireEvent.click(
       within(screen.getByRole("group", { name: "Activity window" })).getByRole("button", {
         name: "7 days",
       }),
     );
-    await screen.findByText("1–10 of 125");
+    await screen.findByText("Showing 1–10 of 125");
     fireEvent.change(screen.getByLabelText("Search users"), {
       target: { value: "activity4@example.org" },
     });
-    await screen.findByText("1–1 of 1");
+    await screen.findByText("Showing 1–1 of 1");
     expect(screen.getByText("Activity User 004")).toBeInTheDocument();
     expect(
       fetcher.mock.calls.some(([url]) =>
@@ -106,7 +106,7 @@ describe("activity dashboard", () => {
   });
   it("opens individual analytics and requests its independent range", async () => {
     dashboard();
-    await screen.findByText("1–10 of 225");
+    await screen.findByText("Showing 1–10 of 225");
     const button = screen.getAllByRole("button", { name: /View activity for/ })[0];
     if (!button) throw new Error("Missing activity action");
     fireEvent.click(button);
@@ -127,7 +127,8 @@ describe("activity dashboard", () => {
   it("denies direct navigation without making activity requests", () => {
     state.allowed = false;
     dashboard();
-    expect(screen.getByText("Not permitted.")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Not permitted" })).toBeInTheDocument();
+    expect(screen.getByText("Only site admins can access User Activity.")).toBeInTheDocument();
     expect(fetcher).not.toHaveBeenCalled();
   });
   it("keeps controls available after failure and retries", async () => {
@@ -135,11 +136,11 @@ describe("activity dashboard", () => {
     dashboard();
     await screen.findByText("We couldn't load the selected users.");
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    await screen.findByText("1–10 of 225");
+    await screen.findByText("Showing 1–10 of 225");
   });
   it("does not show previous-window rows while the next request is pending", async () => {
     dashboard();
-    await screen.findByText("1–10 of 225");
+    await screen.findByText("Showing 1–10 of 225");
     fetcher.mockImplementation(() => new Promise(() => {}));
     fireEvent.click(
       within(screen.getByRole("group", { name: "Activity window" })).getByRole("button", {
@@ -151,7 +152,7 @@ describe("activity dashboard", () => {
   });
   it("shows an empty search result", async () => {
     dashboard();
-    await screen.findByText("1–10 of 225");
+    await screen.findByText("Showing 1–10 of 225");
     fireEvent.change(screen.getByLabelText("Search users"), {
       target: { value: "no-such-person" },
     });
@@ -202,6 +203,10 @@ it("uses server-local calendar days at the exact inactivity boundary", () => {
   if (!user) throw new Error("Missing fixture row");
   expect(activityStatus({ ...user, inactive_days: 6 }, 7)).toBe("active");
   expect(formatLastLogin({ ...user, inactive_days: -1 })).toBe("Today");
+  expect(formatLastLoginDate({ ...user, last_login: "2026-09-16T12:00:00Z" })).toBe("Sep 16, 2026");
+  expect(formatLastLoginDate({ ...user, last_login: null, inactive_days: null })).toBe(
+    "Invited, no first sign-in",
+  );
   expect(activityStatus({ ...user, inactive_days: 7 }, 7)).toBe("dormant");
   expect(activityStatus({ ...user, last_login: null, inactive_days: null }, 7)).toBe("never");
 });

@@ -18,13 +18,31 @@
 import { StatusBadge } from "@/shared/ui/StatusBadge";
 import { activityStatus } from "../lib";
 import type { UserActivityRow } from "../schemas";
+
+const statusDot = "before:size-1.5 before:rounded-full before:bg-current";
+
 export function ActivityStatus({
   user,
   windowDays,
-}: { user: UserActivityRow; windowDays: number }) {
+}: {
+  user: UserActivityRow;
+  windowDays: number;
+}) {
   const status = activityStatus(user, windowDays);
-  if (status === "active") return <StatusBadge variant="active" />;
-  if (status === "dormant") return <StatusBadge variant="warning" label="Dormant" />;
-  if (status === "unknown") return <StatusBadge variant="inactive" label="Unknown" />;
-  return <StatusBadge variant="deleted" label="Never signed in" />;
+  if (status === "active") {
+    return <StatusBadge variant="active" className="[&>span:first-child]:size-1.5" />;
+  }
+  if (status === "dormant") {
+    return <StatusBadge variant="warning" label="Dormant" className={statusDot} />;
+  }
+  if (status === "unknown") {
+    return <StatusBadge variant="inactive" label="Unknown" />;
+  }
+  return (
+    <StatusBadge
+      variant="pending"
+      label="Never signed in"
+      className={`bg-red-50 text-red-700 dark:bg-red-950 dark:text-red-300 ${statusDot}`}
+    />
+  );
 }
