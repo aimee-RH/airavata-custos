@@ -31,6 +31,7 @@ export function ActivityTable({
   total,
   sort,
   direction,
+  busy = false,
   onSort,
   onPage,
   onPageSize,
@@ -43,6 +44,7 @@ export function ActivityTable({
   total: number;
   sort: ActivitySortKey;
   direction: SortDirection;
+  busy?: boolean;
   onSort: (key: ActivitySortKey) => void;
   onPage: (page: number) => void;
   onPageSize: (size: number) => void;
@@ -56,6 +58,7 @@ export function ActivityTable({
       >
         <button
           type="button"
+          disabled={busy}
           className="inline-flex items-center gap-1 rounded uppercase tracking-wide focus-visible:outline focus-visible:outline-2"
           onClick={() => onSort(key)}
         >
@@ -130,6 +133,7 @@ export function ActivityTable({
                     <Button
                       size="sm"
                       variant="outline"
+                      disabled={busy}
                       onClick={() => onSelect(user)}
                       aria-label={`${reviewAccess ? "Review access" : "View activity"} for ${user.name}`}
                     >
@@ -154,6 +158,7 @@ export function ActivityTable({
             <select
               className="rounded border bg-background p-1"
               aria-label="Rows per page"
+              disabled={busy}
               value={pageSize}
               onChange={(event) => onPageSize(Number(event.target.value))}
             >
@@ -161,17 +166,23 @@ export function ActivityTable({
               <option value={15}>15</option>
             </select>
           </label>
-          <Button variant="outline" size="sm" disabled={page <= 1} onClick={() => onPage(page - 1)}>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={busy || page <= 1}
+            onClick={() => onPage(page - 1)}
+          >
             Previous
           </Button>
           <span className="px-1 tabular-nums" aria-live="polite" aria-label="Current page">
+            {busy ? "Loading page " : null}
             <span className="font-medium text-foreground">{page}</span> of{" "}
             {Math.max(1, Math.ceil(total / pageSize))}
           </span>
           <Button
             variant="outline"
             size="sm"
-            disabled={page * pageSize >= total}
+            disabled={busy || page * pageSize >= total}
             onClick={() => onPage(page + 1)}
           >
             Next

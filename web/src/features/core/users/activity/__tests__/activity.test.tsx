@@ -238,6 +238,7 @@ describe("activity dashboard", () => {
     expect(await screen.findByText("1–10 of 225")).toBeInTheDocument();
     for (let page = 2; page <= 21; page++) {
       fireEvent.click(screen.getByRole("button", { name: "Next" }));
+      await waitFor(() => expect(screen.getByRole("button", { name: "Next" })).not.toBeDisabled());
       await screen.findByText(`${(page - 1) * 10 + 1}–${page * 10} of 225`);
     }
     expect(fetcher.mock.calls.some(([url]) => String(url).includes("offset=200"))).toBe(true);
@@ -316,6 +317,11 @@ describe("activity dashboard", () => {
     expect(screen.queryByLabelText("Loading activity table")).not.toBeInTheDocument();
     expect(firstRow).toBeInTheDocument();
     expect(screen.getByRole("table").closest("[aria-busy]")).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByLabelText("Current page")).toHaveTextContent("Loading page 2 of 23");
+    expect(screen.getByRole("button", { name: "Next" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /View activity for Activity User 001/ }),
+    ).toBeDisabled();
   });
   it("does not show previous-window rows while the next request is pending", async () => {
     dashboard();

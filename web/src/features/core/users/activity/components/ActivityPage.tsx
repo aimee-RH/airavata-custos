@@ -272,6 +272,7 @@ function ActivityDashboard() {
                 pageSize={pageSize}
                 sort={sort}
                 direction={direction}
+                busy={users.isPlaceholderData}
                 onSort={(key) => {
                   setSort(key);
                   setDirection(sort === key && direction === "asc" ? "desc" : "asc");
