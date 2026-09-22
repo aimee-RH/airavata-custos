@@ -15,6 +15,8 @@
 -- specific language governing permissions and limitations
 -- under the License.
 
+DELETE FROM role_privileges WHERE privilege = 'core:users:activity:read';
+
 DROP TABLE IF EXISTS user_login_daily;
 DROP TABLE IF EXISTS user_login_events;
 

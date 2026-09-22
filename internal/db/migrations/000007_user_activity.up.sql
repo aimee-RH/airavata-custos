@@ -63,3 +63,12 @@ CREATE TABLE IF NOT EXISTS user_login_daily
     CONSTRAINT fk_user_login_daily_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 CREATE INDEX IF NOT EXISTS idx_login_daily_date ON user_login_daily (local_date);
+
+-- Existing system roles were created from the privilege registry at the time.
+-- Backfill the new read privilege for upgrades; newly created roles receive it
+-- through the normal KnownPrivileges path.
+INSERT INTO role_privileges (role_id, privilege)
+SELECT id, 'core:users:activity:read'
+FROM roles
+WHERE is_system = TRUE AND name IN ('admin', 'super_admin')
+ON CONFLICT DO NOTHING;

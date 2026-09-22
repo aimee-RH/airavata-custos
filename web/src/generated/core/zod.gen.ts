@@ -31,6 +31,10 @@ export const zAllocationMembershipResponse = z.object({
 
 export type allocationMembershipResponseZodType = z.infer<typeof zAllocationMembershipResponse>;
 
+export const zClusterAccessLevel = z.enum(['USER', 'ADMIN']);
+
+export type clusterAccessLevelZodType = z.infer<typeof zClusterAccessLevel>;
+
 export const zComputeAllocation = z.object({
     compute_cluster_id: z.string().optional(),
     end_time: z.string().optional(),
@@ -173,9 +177,11 @@ export const zComputeCluster = z.object({
 export type computeClusterZodType = z.infer<typeof zComputeCluster>;
 
 export const zComputeClusterUser = z.object({
+    access_level: zClusterAccessLevel.optional(),
     compute_cluster_id: z.string().optional(),
     id: z.string().optional(),
     local_username: z.string().optional(),
+    provisioned_at: z.string().optional(),
     user_id: z.string().optional()
 });
 
@@ -205,6 +211,7 @@ export const zPrivilegeKey = z.enum([
     'core:projects:write',
     'core:users:read',
     'core:users:write',
+    'core:users:activity:read',
     'core:organizations:read',
     'core:organizations:write',
     'core:traces:read',
@@ -277,6 +284,12 @@ export const zProjectListResponse = z.object({
 
 export type projectListResponseZodType = z.infer<typeof zProjectListResponse>;
 
+export const zRecordLoginEventResult = z.object({
+    recorded: z.boolean().optional()
+});
+
+export type recordLoginEventResultZodType = z.infer<typeof zRecordLoginEventResult>;
+
 export const zRole = z.object({
     created_at: z.string().optional(),
     description: z.string().optional(),
@@ -335,6 +348,58 @@ export const zTraceSummary = z.object({
 });
 
 export type traceSummaryZodType = z.infer<typeof zTraceSummary>;
+
+export const zUserActivityRow = z.object({
+    current_streak: z.int().optional(),
+    email: z.string().optional(),
+    inactive_days: z.int().optional(),
+    last_login: z.string().optional(),
+    login_count: z.int().optional(),
+    login_day_count: z.int().optional(),
+    name: z.string().optional(),
+    role_names: z.array(z.string()).optional(),
+    user_id: z.string().optional(),
+    window_login_count: z.int().optional()
+});
+
+export type userActivityRowZodType = z.infer<typeof zUserActivityRow>;
+
+export const zUserActivityListResponse = z.object({
+    items: z.array(zUserActivityRow).optional(),
+    limit: z.int().optional(),
+    offset: z.int().optional(),
+    status: z.string().optional(),
+    total: z.int().optional(),
+    window_days: z.int().optional()
+});
+
+export type userActivityListResponseZodType = z.infer<typeof zUserActivityListResponse>;
+
+export const zUserActivityTrendPoint = z.object({
+    active_users: z.int().optional(),
+    date: z.string().optional(),
+    login_count: z.int().optional()
+});
+
+export type userActivityTrendPointZodType = z.infer<typeof zUserActivityTrendPoint>;
+
+export const zUserActivityAnalytics = z.object({
+    active_users: z.int().optional(),
+    dormant_over_90_days: z.int().optional(),
+    generated_at: z.string().optional(),
+    lifetime_active_days: z.int().optional(),
+    lifetime_login_count: z.int().optional(),
+    oldest_never_created_at: z.string().optional(),
+    prior_active_users: z.int().optional(),
+    total_users: z.int().optional(),
+    trend: z.array(zUserActivityTrendPoint).optional(),
+    users_ever_logged_in: z.int().optional(),
+    window_active_days: z.int().optional(),
+    window_days: z.int().optional(),
+    window_login_count: z.int().optional()
+});
+
+export type userActivityAnalyticsZodType = z.infer<typeof zUserActivityAnalytics>;
 
 export const zUserAllocationSuTotalResponse = z.object({
     compute_allocation_id: z.string().optional(),
@@ -404,6 +469,7 @@ export const zUser = z.object({
     middle_name: z.string().optional(),
     organization_id: z.string().optional(),
     status: zUserStatus.optional(),
+    timezone: z.string().optional(),
     type: zUserType.optional()
 });
 
@@ -432,12 +498,34 @@ export const zAttachResourceRequest = z.object({
 
 export type attachResourceRequestZodType = z.infer<typeof zAttachResourceRequest>;
 
+export const zCreateComputeClusterUserRequest = z.object({
+    compute_cluster_id: z.string().optional(),
+    local_username: z.string().optional(),
+    user_id: z.string().optional()
+});
+
+export type createComputeClusterUserRequestZodType = z.infer<typeof zCreateComputeClusterUserRequest>;
+
 export const zCreateRoleRequest = z.object({
     description: z.string().optional(),
     name: z.string().optional()
 });
 
 export type createRoleRequestZodType = z.infer<typeof zCreateRoleRequest>;
+
+export const zCreateUserRequest = z.object({
+    allocation_id: z.string().optional(),
+    cluster_admin: z.boolean().optional(),
+    compute_cluster_id: z.string().optional(),
+    email: z.string().optional(),
+    first_name: z.string().optional(),
+    last_name: z.string().optional(),
+    organization_id: z.string().optional(),
+    portal_admin: z.boolean().optional(),
+    username: z.string().optional()
+});
+
+export type createUserRequestZodType = z.infer<typeof zCreateUserRequest>;
 
 export const zGrantPrivilegeRequest = z.object({
     privilege: zPrivilegeKey.optional(),
@@ -1005,7 +1093,7 @@ export const zGetComputeAllocationsByIdUsersByUserIdUsagesTotalResponse = zUserA
 /**
  * Cluster user payload
  */
-export const zPostComputeClusterUsersBody = zComputeClusterUser;
+export const zPostComputeClusterUsersBody = zCreateComputeClusterUserRequest;
 
 /**
  * Created
@@ -1028,7 +1116,7 @@ export const zGetComputeClusterUsersByIdResponse = zComputeClusterUser;
 /**
  * Cluster user payload
  */
-export const zPutComputeClusterUsersByIdBody = zComputeClusterUser;
+export const zPutComputeClusterUsersByIdBody = zCreateComputeClusterUserRequest;
 
 export const zPutComputeClusterUsersByIdPath = z.object({
     id: z.string()
@@ -1087,6 +1175,11 @@ export const zGetComputeClustersByIdUsersByUserIdResponse = zComputeClusterUser;
  */
 export const zGetMeResponse = zCallerProfileResponse;
 
+/**
+ * Already recorded for this token
+ */
+export const zPostMeLoginEventsResponse = zRecordLoginEventResult;
+
 export const zGetOrganizationsQuery = z.object({
     limit: z.int().optional(),
     offset: z.int().optional()
@@ -1126,6 +1219,7 @@ export const zGetPrivilegesByKeyHoldersPath = z.object({
         'core:projects:write',
         'core:users:read',
         'core:users:write',
+        'core:users:activity:read',
         'core:organizations:read',
         'core:organizations:write',
         'core:traces:read',
@@ -1275,6 +1369,7 @@ export const zDeleteRolesByIdPrivilegesByKeyPath = z.object({
         'core:projects:write',
         'core:users:read',
         'core:users:write',
+        'core:users:activity:read',
         'core:organizations:read',
         'core:organizations:write',
         'core:traces:read',
@@ -1359,7 +1454,7 @@ export const zGetUsersResponse = zUserListResponse;
 /**
  * User payload
  */
-export const zPostUsersBody = zUser;
+export const zPostUsersBody = zCreateUserRequest;
 
 /**
  * Created
@@ -1388,6 +1483,19 @@ export const zPutUsersByIdPath = z.object({
  * OK
  */
 export const zPutUsersByIdResponse = zUser;
+
+export const zGetUsersByIdActivityAnalyticsPath = z.object({
+    id: z.string()
+});
+
+export const zGetUsersByIdActivityAnalyticsQuery = z.object({
+    window: z.int().optional()
+});
+
+/**
+ * OK
+ */
+export const zGetUsersByIdActivityAnalyticsResponse = zUserActivityAnalytics;
 
 export const zGetUsersByIdChangeRequestsPath = z.object({
     id: z.string()
@@ -1464,6 +1572,7 @@ export const zDeleteUsersByIdPrivilegesByKeyPath = z.object({
         'core:projects:write',
         'core:users:read',
         'core:users:write',
+        'core:users:activity:read',
         'core:organizations:read',
         'core:organizations:write',
         'core:traces:read',
@@ -1529,6 +1638,30 @@ export const zGetUsersByIdUserIdentitiesPath = z.object({
  * OK
  */
 export const zGetUsersByIdUserIdentitiesResponse = z.array(zUserIdentity);
+
+export const zGetUsersActivityQuery = z.object({
+    window: z.int(),
+    status: z.string(),
+    query: z.string().optional(),
+    limit: z.int().optional(),
+    offset: z.int().optional(),
+    sort: z.string().optional(),
+    direction: z.string().optional()
+});
+
+/**
+ * OK
+ */
+export const zGetUsersActivityResponse = zUserActivityListResponse;
+
+export const zGetUsersActivityAnalyticsQuery = z.object({
+    window: z.int().optional()
+});
+
+/**
+ * OK
+ */
+export const zGetUsersActivityAnalyticsResponse = zUserActivityAnalytics;
 
 /**
  * Merge payload

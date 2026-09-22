@@ -38,6 +38,8 @@ export type CallerRoleGrant = {
     role?: Role;
 };
 
+export type ClusterAccessLevel = 'USER' | 'ADMIN';
+
 export type ComputeAllocation = {
     /**
      * The ID of the compute cluster where the allocation is provisioned.
@@ -277,12 +279,17 @@ export type ComputeCluster = {
 };
 
 export type ComputeClusterUser = {
+    access_level?: ClusterAccessLevel;
     compute_cluster_id?: string;
     id?: string;
     /**
      * The username of the user on the compute cluster, which may be different from their Airavata Custos username.
      */
     local_username?: string;
+    /**
+     * When the account was provisioned into the registry; nil until then.
+     */
+    provisioned_at?: string;
     user_id?: string;
 };
 
@@ -300,7 +307,7 @@ export type OrganizationListResponse = {
     total?: number;
 };
 
-export type PrivilegeKey = 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
+export type PrivilegeKey = 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:users:activity:read' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
 
 export type Project = {
     created_time?: string;
@@ -361,6 +368,10 @@ export type ProjectResponse = {
 
 export type ProjectStatus = 'ACTIVE' | 'INACTIVE' | 'DELETED';
 
+export type RecordLoginEventResult = {
+    recorded?: boolean;
+};
+
 export type Role = {
     created_at?: string;
     description?: string;
@@ -412,7 +423,52 @@ export type User = {
     middle_name?: string;
     organization_id?: string;
     status?: UserStatus;
+    timezone?: string;
     type?: UserType;
+};
+
+export type UserActivityAnalytics = {
+    active_users?: number;
+    dormant_over_90_days?: number;
+    generated_at?: string;
+    lifetime_active_days?: number;
+    lifetime_login_count?: number;
+    oldest_never_created_at?: string;
+    prior_active_users?: number;
+    total_users?: number;
+    trend?: Array<UserActivityTrendPoint>;
+    users_ever_logged_in?: number;
+    window_active_days?: number;
+    window_days?: number;
+    window_login_count?: number;
+};
+
+export type UserActivityListResponse = {
+    items?: Array<UserActivityRow>;
+    limit?: number;
+    offset?: number;
+    status?: string;
+    total?: number;
+    window_days?: number;
+};
+
+export type UserActivityRow = {
+    current_streak?: number;
+    email?: string;
+    inactive_days?: number;
+    last_login?: string;
+    login_count?: number;
+    login_day_count?: number;
+    name?: string;
+    role_names?: Array<string>;
+    user_id?: string;
+    window_login_count?: number;
+};
+
+export type UserActivityTrendPoint = {
+    active_users?: number;
+    date?: string;
+    login_count?: number;
 };
 
 export type UserAllocationSuTotalResponse = {
@@ -479,9 +535,27 @@ export type AttachResourceRequest = {
     resource_time?: number;
 };
 
+export type CreateComputeClusterUserRequest = {
+    compute_cluster_id?: string;
+    local_username?: string;
+    user_id?: string;
+};
+
 export type CreateRoleRequest = {
     description?: string;
     name?: string;
+};
+
+export type CreateUserRequest = {
+    allocation_id?: string;
+    cluster_admin?: boolean;
+    compute_cluster_id?: string;
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    organization_id?: string;
+    portal_admin?: boolean;
+    username?: string;
 };
 
 export type GrantPrivilegeRequest = {
@@ -2388,7 +2462,7 @@ export type PostComputeClusterUsersData = {
     /**
      * Cluster user payload
      */
-    body: ComputeClusterUser;
+    body: CreateComputeClusterUserRequest;
     path?: never;
     query?: never;
     url: '/compute-cluster-users';
@@ -2480,7 +2554,7 @@ export type PutComputeClusterUsersByIdData = {
     /**
      * Cluster user payload
      */
-    body: ComputeClusterUser;
+    body: CreateComputeClusterUserRequest;
     path: {
         /**
          * Compute cluster user ID
@@ -2701,6 +2775,43 @@ export type GetMeResponses = {
 
 export type GetMeResponse = GetMeResponses[keyof GetMeResponses];
 
+export type PostMeLoginEventsData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/me/login-events';
+};
+
+export type PostMeLoginEventsErrors = {
+    /**
+     * Body is not empty, or the token carries no usable session evidence
+     */
+    400: {
+        error?: string;
+    };
+    /**
+     * No authenticated caller
+     */
+    401: {
+        error?: string;
+    };
+};
+
+export type PostMeLoginEventsError = PostMeLoginEventsErrors[keyof PostMeLoginEventsErrors];
+
+export type PostMeLoginEventsResponses = {
+    /**
+     * Already recorded for this token
+     */
+    200: RecordLoginEventResult;
+    /**
+     * Sign-in recorded
+     */
+    201: RecordLoginEventResult;
+};
+
+export type PostMeLoginEventsResponse = PostMeLoginEventsResponses[keyof PostMeLoginEventsResponses];
+
 export type GetOrganizationsData = {
     body?: never;
     path?: never;
@@ -2794,7 +2905,7 @@ export type GetPrivilegesByKeyHoldersData = {
         /**
          * Privilege key
          */
-        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
+        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:users:activity:read' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
     };
     query?: never;
     url: '/privileges/{key}/holders';
@@ -3324,7 +3435,7 @@ export type DeleteRolesByIdPrivilegesByKeyData = {
         /**
          * Privilege key
          */
-        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
+        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:users:activity:read' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
     };
     query?: never;
     url: '/roles/{id}/privileges/{key}';
@@ -3619,7 +3730,7 @@ export type PostUsersData = {
     /**
      * User payload
      */
-    body: User;
+    body: CreateUserRequest;
     path?: never;
     query?: never;
     url: '/users';
@@ -3630,6 +3741,12 @@ export type PostUsersErrors = {
      * Bad Request
      */
     400: {
+        error?: string;
+    };
+    /**
+     * Conflict
+     */
+    409: {
         error?: string;
     };
 };
@@ -3717,6 +3834,56 @@ export type PutUsersByIdResponses = {
 };
 
 export type PutUsersByIdResponse = PutUsersByIdResponses[keyof PutUsersByIdResponses];
+
+export type GetUsersByIdActivityAnalyticsData = {
+    body?: never;
+    path: {
+        /**
+         * User ID
+         */
+        id: string;
+    };
+    query?: {
+        /**
+         * Activity window in user-local calendar days (1-365, default 30)
+         */
+        window?: number;
+    };
+    url: '/users/{id}/activity/analytics';
+};
+
+export type GetUsersByIdActivityAnalyticsErrors = {
+    /**
+     * Invalid window
+     */
+    400: {
+        error?: string;
+    };
+    /**
+     * Caller lacks core:users:activity:read
+     */
+    403: {
+        code?: string;
+        message?: string;
+    };
+    /**
+     * No such OIDC-linked user
+     */
+    404: {
+        error?: string;
+    };
+};
+
+export type GetUsersByIdActivityAnalyticsError = GetUsersByIdActivityAnalyticsErrors[keyof GetUsersByIdActivityAnalyticsErrors];
+
+export type GetUsersByIdActivityAnalyticsResponses = {
+    /**
+     * OK
+     */
+    200: UserActivityAnalytics;
+};
+
+export type GetUsersByIdActivityAnalyticsResponse = GetUsersByIdActivityAnalyticsResponses[keyof GetUsersByIdActivityAnalyticsResponses];
 
 export type GetUsersByIdChangeRequestsData = {
     body?: never;
@@ -3950,7 +4117,7 @@ export type DeleteUsersByIdPrivilegesByKeyData = {
         /**
          * Privilege key
          */
-        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
+        key: 'core:clusters:read' | 'core:clusters:write' | 'core:allocations:read' | 'core:allocations:write' | 'core:projects:read' | 'core:projects:write' | 'core:users:read' | 'core:users:write' | 'core:users:activity:read' | 'core:organizations:read' | 'core:organizations:write' | 'core:traces:read' | 'core:privileges:grant' | 'core:roles:manage';
     };
     query?: never;
     url: '/users/{id}/privileges/{key}';
@@ -4194,6 +4361,108 @@ export type GetUsersByIdUserIdentitiesResponses = {
 };
 
 export type GetUsersByIdUserIdentitiesResponse = GetUsersByIdUserIdentitiesResponses[keyof GetUsersByIdUserIdentitiesResponses];
+
+export type GetUsersActivityData = {
+    body?: never;
+    path?: never;
+    query: {
+        /**
+         * Activity window in user-local calendar days (1-365)
+         */
+        window: number;
+        /**
+         * all | active | dormant | never
+         */
+        status: string;
+        /**
+         * Substring match on name or email
+         */
+        query?: string;
+        /**
+         * Page size (default 10, max 200)
+         */
+        limit?: number;
+        /**
+         * Page offset (default 0)
+         */
+        offset?: number;
+        /**
+         * name | last_login | login_count (default last_login)
+         */
+        sort?: string;
+        /**
+         * asc | desc (default desc)
+         */
+        direction?: string;
+    };
+    url: '/users/activity';
+};
+
+export type GetUsersActivityErrors = {
+    /**
+     * Invalid window, status, sort or direction
+     */
+    400: {
+        error?: string;
+    };
+    /**
+     * Caller lacks core:users:activity:read
+     */
+    403: {
+        code?: string;
+        message?: string;
+    };
+};
+
+export type GetUsersActivityError = GetUsersActivityErrors[keyof GetUsersActivityErrors];
+
+export type GetUsersActivityResponses = {
+    /**
+     * OK
+     */
+    200: UserActivityListResponse;
+};
+
+export type GetUsersActivityResponse = GetUsersActivityResponses[keyof GetUsersActivityResponses];
+
+export type GetUsersActivityAnalyticsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Activity window in user-local calendar days (1-365, default 30)
+         */
+        window?: number;
+    };
+    url: '/users/activity/analytics';
+};
+
+export type GetUsersActivityAnalyticsErrors = {
+    /**
+     * Invalid window
+     */
+    400: {
+        error?: string;
+    };
+    /**
+     * Caller lacks core:users:activity:read
+     */
+    403: {
+        code?: string;
+        message?: string;
+    };
+};
+
+export type GetUsersActivityAnalyticsError = GetUsersActivityAnalyticsErrors[keyof GetUsersActivityAnalyticsErrors];
+
+export type GetUsersActivityAnalyticsResponses = {
+    /**
+     * OK
+     */
+    200: UserActivityAnalytics;
+};
+
+export type GetUsersActivityAnalyticsResponse = GetUsersActivityAnalyticsResponses[keyof GetUsersActivityAnalyticsResponses];
 
 export type PostUsersMergeData = {
     /**
