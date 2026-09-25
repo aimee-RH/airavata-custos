@@ -47,7 +47,7 @@ type UserActivityPage struct {
 }
 
 // ListUserActivity validates the requested filter and returns the matching
-// page of OIDC-linked identities.
+// page of users with an OIDC-linked identity.
 func (s *Service) ListUserActivity(ctx context.Context, f store.UserActivityFilter) (*UserActivityPage, error) {
 	normalized, err := normalizeActivityFilter(f)
 	if err != nil {

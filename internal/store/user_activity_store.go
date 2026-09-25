@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-// Activity reads describe OIDC-linked identities only; provisioned users who
+// Activity reads describe users with an OIDC-linked identity only; provisioned users who
 // never linked an identity provider cannot have sign-in history.
 const oidcLinkedUser = `EXISTS (
 	SELECT 1 FROM user_identities ui

@@ -600,6 +600,7 @@ definitions:
   UserActivityAnalytics:
     properties:
       active_users:
+        description: ActiveUsers counts users with a recorded sign-in within the window.
         type: integer
       dormant_over_90_days:
         type: integer
@@ -654,10 +655,14 @@ definitions:
       inactive_days:
         type: integer
       last_login:
+        description: LastLogin is the most recent recorded sign-in timestamp.
         type: string
       login_count:
+        description: LoginCount is the lifetime number of recorded sign-ins.
         type: integer
       login_day_count:
+        description: LoginDayCount is the lifetime number of local calendar days with
+          a sign-in.
         type: integer
       name:
         type: string
@@ -673,10 +678,13 @@ definitions:
   UserActivityTrendPoint:
     properties:
       active_users:
+        description: ActiveUsers counts distinct users who signed in on this local
+          calendar date.
         type: integer
       date:
         type: string
       login_count:
+        description: LoginCount sums recorded sign-ins on this local calendar date.
         type: integer
     type: object
   UserAllocationSUTotalResponse:
@@ -3976,7 +3984,7 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Aggregate sign-in analytics for one OIDC-linked identity
+      summary: Aggregate sign-in analytics for one user with an OIDC-linked identity
       tags:
       - Users
   /users/{id}/change-requests:
@@ -4465,10 +4473,11 @@ paths:
       - User Identities
   /users/activity:
     get:
-      description: 'One row per OIDC-linked identity. `window` and `status` are applied
-        before pagination, and the response echoes both so a caller can detect an
-        unfiltered answer. Statuses are disjoint: active has signed in within the
-        window, dormant has signed in earlier, never has no recorded sign-in.'
+      description: 'One row per user with an OIDC-linked identity. `window` and `status`
+        are applied before pagination, and the response echoes both so a caller can
+        detect an unfiltered answer. Sign-in statuses are disjoint: active has signed
+        in within the window, dormant has signed in earlier, never has no recorded
+        sign-in.'
       parameters:
       - description: Activity window in user-local calendar days (1-365)
         in: query
@@ -4525,12 +4534,12 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: List sign-in activity for OIDC-linked identities
+      summary: List sign-in activity for users with an OIDC-linked identity
       tags:
       - Users
   /users/activity/analytics:
     get:
-      description: Population-wide engagement over the requested window. Supplemental
+      description: Population-wide sign-in activity over the requested window. Supplemental
         fields (`prior_active_users`, `dormant_over_90_days`, `oldest_never_created_at`)
         may be null when the population cannot produce them.
       parameters:
@@ -4563,7 +4572,7 @@ paths:
             type: object
       security:
       - BearerAuth: []
-      summary: Aggregate sign-in analytics for all OIDC-linked identities
+      summary: Aggregate sign-in analytics for all users with an OIDC-linked identity
       tags:
       - Users
   /users/merge:

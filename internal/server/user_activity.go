@@ -46,8 +46,8 @@ type UserActivityListResponse struct {
 	Status     string                  `json:"status"`
 }
 
-// @Summary	List sign-in activity for OIDC-linked identities
-// @Description	One row per OIDC-linked identity. `window` and `status` are applied before pagination, and the response echoes both so a caller can detect an unfiltered answer. Statuses are disjoint: active has signed in within the window, dormant has signed in earlier, never has no recorded sign-in.
+// @Summary	List sign-in activity for users with an OIDC-linked identity
+// @Description	One row per user with an OIDC-linked identity. `window` and `status` are applied before pagination, and the response echoes both so a caller can detect an unfiltered answer. Sign-in statuses are disjoint: active has signed in within the window, dormant has signed in earlier, never has no recorded sign-in.
 // @Tags	Users
 // @Security	BearerAuth
 // @Produce	json
@@ -92,8 +92,8 @@ func (s *Server) listUserActivity(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// @Summary	Aggregate sign-in analytics for all OIDC-linked identities
-// @Description	Population-wide engagement over the requested window. Supplemental fields (`prior_active_users`, `dormant_over_90_days`, `oldest_never_created_at`) may be null when the population cannot produce them.
+// @Summary	Aggregate sign-in analytics for all users with an OIDC-linked identity
+// @Description	Population-wide sign-in activity over the requested window. Supplemental fields (`prior_active_users`, `dormant_over_90_days`, `oldest_never_created_at`) may be null when the population cannot produce them.
 // @Tags	Users
 // @Security	BearerAuth
 // @Produce	json
@@ -116,7 +116,7 @@ func (s *Server) getActivityAnalytics(w http.ResponseWriter, r *http.Request) {
 	common.WriteJSON(w, http.StatusOK, analytics)
 }
 
-// @Summary	Aggregate sign-in analytics for one OIDC-linked identity
+// @Summary	Aggregate sign-in analytics for one user with an OIDC-linked identity
 // @Tags	Users
 // @Security	BearerAuth
 // @Produce	json
